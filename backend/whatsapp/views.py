@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 from .models import WAUser
-from .utils import normalize_wa_id, compute_wa_hash
+from .utils import normalize_wa_id, compute_wa_hash, detect_locale, get_intro_message, send_whatsapp_text
 from .throttling import IPRateThrottle, WaHashRateThrottle
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,13 @@ class MetaWebhookView(APIView):
                         "consent_ts": timezone.now(),
                         "role": WAUser.Roles.USER,
                     }
+                    # Optional locale detection from first text message body
+                    try:
+                        body_text = (msg.get("text") or {}).get("body") if isinstance(msg.get("text"), dict) else ""
+                    except Exception:
+                        body_text = ""
+                    defaults["locale"] = detect_locale(body_text or "")
+
                     # Optional display name
                     contact = contacts.get(wa_norm) or (value.get("contacts", [{}])[0] if value.get("contacts") else {})
                     display_name = (contact.get("profile") or {}).get("name") if isinstance(contact, dict) else None
@@ -85,6 +92,14 @@ class MetaWebhookView(APIView):
                     obj, created = WAUser.objects.get_or_create(wa_id_hash=wa_hash, defaults=defaults)
                     # Update last_seen on any contact
                     WAUser.objects.filter(pk=obj.pk).update(last_seen=timezone.now())
+
+                    if created:
+                        try:
+                            intro = get_intro_message(obj.locale or defaults.get("locale") or "he-IL")
+                            send_whatsapp_text(wa_norm, intro)
+                        except Exception:
+                            logger.exception("failed to send intro message to %s", wa_norm)
+
                     processed += 1
 
         return JsonResponse({"status": "ok", "processed": processed})
