@@ -1,0 +1,26 @@
+services:
+  postgres:
+    # Build custom Postgres 17 with PostGIS and init scripts
+    platform: linux/amd64
+    build:
+      context: ./docker/postgres
+    image: dilli/postgres-postgis:17
+    container_name: dilli-postgres
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dilli
+    volumes:
+      # Use a named volume so init scripts run on first start
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata: {}
