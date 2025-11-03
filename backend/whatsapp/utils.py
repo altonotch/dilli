@@ -76,13 +76,21 @@ def get_language_prompt() -> str:
 def get_intro_message(locale: str) -> str:
     loc = normalize_locale(locale)
     with translation.override(loc):
-        return _(
-            'Welcome to "Dilli" — deals from the supermarket near you.\n'
-            'What would you like to do?\n'
-            '1) Find a deal\n'
-            '2) Add a deal\n'
-            '3) How it works'
+        msg1 = _(
+            "🛒 Dilli — save together on groceries.\n"
+            "Send prices you see in the supermarket and help everyone find cheaper options.\n\n"
+            "👉 To share a deal: write product name, price, and store.\n"
+            "Example:\n"
+            "Milk 3% 4.20 Shufersal Ayalon"
         )
+        msg2 = _(
+            "You can also:\n"
+            "• \"Find milk 3%\" — see nearby prices\n"
+            "• Send your 📍 location — to improve results\n"
+            "• Send 👍 or 👎 on a deal you saw\n\n"
+            "Type \"help\" anytime to see this again."
+        )
+    return "\n\n".join([msg1, msg2])
 
 
 def send_whatsapp_text(to_e164: str, body: str) -> bool:
