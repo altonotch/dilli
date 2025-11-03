@@ -13,7 +13,16 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 from .models import WAUser
-from .utils import normalize_wa_id, compute_wa_hash, detect_locale, get_intro_message, send_whatsapp_text
+from .utils import (
+    normalize_wa_id,
+    compute_wa_hash,
+    detect_locale,
+    get_intro_message,
+    send_whatsapp_text,
+    parse_language_choice,
+    get_language_prompt,
+    normalize_locale,
+)
 from .throttling import IPRateThrottle, WaHashRateThrottle
 
 logger = logging.getLogger(__name__)
@@ -73,12 +82,14 @@ class MetaWebhookView(APIView):
                         "consent_ts": timezone.now(),
                         "role": WAUser.Roles.USER,
                     }
-                    # Optional locale detection from first text message body
+                    # Optional locale detection and/or explicit language choice
                     try:
                         body_text = (msg.get("text") or {}).get("body") if isinstance(msg.get("text"), dict) else ""
                     except Exception:
                         body_text = ""
-                    defaults["locale"] = detect_locale(body_text or "")
+
+                    lang_choice = parse_language_choice(body_text)
+                    defaults["locale"] = lang_choice or detect_locale(body_text or "")
 
                     # Optional display name
                     contact = contacts.get(wa_norm) or (value.get("contacts", [{}])[0] if value.get("contacts") else {})
@@ -93,12 +104,24 @@ class MetaWebhookView(APIView):
                     # Update last_seen on any contact
                     WAUser.objects.filter(pk=obj.pk).update(last_seen=timezone.now())
 
-                    if created:
-                        try:
-                            intro = get_intro_message(obj.locale or defaults.get("locale") or "he-IL")
+                    # Determine current effective locale
+                    current_locale = normalize_locale(getattr(obj, 'locale', None) or defaults.get('locale') or 'he')
+
+                    try:
+                        if lang_choice:
+                            # User explicitly chose a language: persist and acknowledge with an intro
+                            new_locale = normalize_locale(lang_choice)
+                            if new_locale != current_locale:
+                                WAUser.objects.filter(pk=obj.pk).update(locale=new_locale)
+                                current_locale = new_locale
+                            intro = get_intro_message(current_locale)
                             send_whatsapp_text(wa_norm, intro)
-                        except Exception:
-                            logger.exception("failed to send intro message to %s", wa_norm)
+                        elif created:
+                            # New user without explicit choice: ask to select language
+                            prompt = get_language_prompt()
+                            send_whatsapp_text(wa_norm, prompt)
+                    except Exception:
+                        logger.exception("failed to send onboarding message to %s", wa_norm)
 
                     processed += 1
 

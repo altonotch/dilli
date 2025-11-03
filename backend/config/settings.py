@@ -125,6 +125,17 @@ TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
+# Supported UI languages for WhatsApp messages
+LANGUAGES = [
+    ('he', 'Hebrew'),
+    ('en', 'English'),
+]
+
+# Path for Django gettext catalogs (optional; can generate with makemessages)
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
+
 USE_TZ = True
 
 

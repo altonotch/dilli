@@ -5,6 +5,8 @@ import logging
 import json
 from urllib import request, error
 from django.conf import settings
+from django.utils import translation
+from django.utils.translation import gettext as _
 
 
 logger = logging.getLogger(__name__)
@@ -28,30 +30,59 @@ def compute_wa_hash(wa_id: str) -> str:
     return h.hexdigest()
 
 
+def normalize_locale(locale: str) -> str:
+    """Normalize locale code to either 'he' or 'en'. Defaults to 'en' if unknown."""
+    s = (locale or "").strip().lower()
+    if s.startswith("he") or s in ("hebrew", "עברית"):
+        return "he"
+    return "en"
+
+
 def detect_locale(text: str) -> str:
-    """Very simple detector: Hebrew characters => he-IL else en-US."""
+    """Heuristic: Hebrew characters => 'he', else 'en'."""
     try:
-        return 'he-IL' if _HEBREW_CHARS.search(text or '') else 'en-US'
+        return 'he' if _HEBREW_CHARS.search(text or '') else 'en'
     except Exception:
-        return 'en-US'
+        return 'en'
+
+
+def parse_language_choice(text: str) -> str | None:
+    """Parse explicit language choice from user text.
+
+    Accepts digits (1/2), language names (English/עברית), and short codes (he/en).
+    Returns 'he', 'en', or None if no explicit choice detected.
+    """
+    t = (text or "").strip().lower()
+    if not t:
+        return None
+
+    # Normalize common tokens; allow matching even if surrounded by other text
+    if "עברית" in t or re.search(r"\bhe\b", t) or t == "1":
+        return "he"
+    if "english" in t or re.search(r"\ben\b", t) or t == "2":
+        return "en"
+    return None
+
+
+def get_language_prompt() -> str:
+    """Bilingual language selection message shown on first contact."""
+    return (
+        "Please choose your language / נא לבחור שפה\n"
+        "1) עברית\n"
+        "2) English"
+    )
 
 
 def get_intro_message(locale: str) -> str:
-    if (locale or '').lower().startswith('he'):
-        return (
-            """ברוך/ה הבא/ה ל"דיללי" — דילים מהסופר לידך.
-מה תרצה/י לעשות?
-1) למצוא דיל
-2) להוסיף דיל
-3) איך זה עובד"""
+    loc = normalize_locale(locale)
+    with translation.override(loc):
+        return _(
+            'Welcome to "Dilli" — deals from the supermarket near you.\n'
+            'What would you like to do?\n'
+            '1) Find a deal\n'
+            '2) Add a deal\n'
+            '3) How it works'
         )
-    return (
-        """Welcome to "Dilli" — deals from the supermarket near you.
-What would you like to do?
-1) Find a deal
-2) Add a deal
-3) How it works"""
-    )
 
 
 def send_whatsapp_text(to_e164: str, body: str) -> bool:
@@ -73,7 +104,7 @@ def send_whatsapp_text(to_e164: str, body: str) -> bool:
         "type": "text",
         "text": {"body": body, "preview_url": False},
     }
-    data = json.dumps(payload).encode('utf-8')
+    data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
     req = request.Request(
         url,
         data=data,
