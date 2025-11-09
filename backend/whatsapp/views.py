@@ -18,7 +18,9 @@ from .utils import (
     compute_wa_hash,
     detect_locale,
     get_intro_message,
+    get_intro_buttons,
     send_whatsapp_text,
+    send_whatsapp_buttons,
     parse_language_choice,
     get_language_prompt,
     normalize_locale,
@@ -115,7 +117,10 @@ class MetaWebhookView(APIView):
                                 WAUser.objects.filter(pk=obj.pk).update(locale=new_locale)
                                 current_locale = new_locale
                             intro = get_intro_message(current_locale)
-                            send_whatsapp_text(wa_norm, intro)
+                            buttons = get_intro_buttons(current_locale)
+                            sent = send_whatsapp_buttons(wa_norm, intro, buttons)
+                            if not sent:
+                                send_whatsapp_text(wa_norm, intro)
                         elif created:
                             # New user without explicit choice: ask to select language
                             prompt = get_language_prompt()
