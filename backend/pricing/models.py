@@ -15,6 +15,26 @@ class PriceReport(models.Model):
     store = models.ForeignKey("stores.Store", on_delete=models.PROTECT)
 
     price = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES)
+    units_in_price = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Number of units covered by the reported price (e.g., 3 for a 3-pack deal).",
+    )
+    is_for_club_members_only = models.BooleanField(
+        default=False,
+        help_text="Whether the deal is restricted to loyalty/club members.",
+    )
+    min_cart_total = models.DecimalField(
+        max_digits=PRICE_MAX_DIGITS,
+        decimal_places=PRICE_DECIMAL_PLACES,
+        null=True,
+        blank=True,
+        help_text="Minimum cart total required to redeem the deal (e.g., 100 for orders over 100₪).",
+    )
+    deal_notes = models.CharField(
+        max_length=240,
+        blank=True,
+        help_text="Free-text qualifier for other deal conditions (e.g., loyalty-only, coupons).",
+    )
     observed_at = models.DateTimeField(db_index=True)
 
     # Optional extras

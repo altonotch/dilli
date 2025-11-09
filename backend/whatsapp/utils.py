@@ -79,18 +79,13 @@ def get_intro_message(locale: str) -> str:
         msg1 = _(
             "🛒 Dilli — save together on groceries.\n"
             "Send prices you see in the supermarket and help everyone find cheaper options.\n\n"
-            "👉 To share a deal: write product name, price, and store.\n"
-            "Example:\n"
-            "Milk 3% 4.20 Shufersal Ayalon"
-        )
-        msg2 = _(
-            "You can also:\n"
-            "• \"Find milk 3%\" — see nearby prices\n"
-            "• Send your 📍 location — to improve results\n"
+            "Choose one of the buttons:\n"
+            "• add a deal — share a price you just found\n"
+            "• find a deal — see what others reported nearby"
             "• Send 👍 or 👎 on a deal you saw\n\n"
             "Type \"help\" anytime to see this again."
         )
-    return "\n\n".join([msg1, msg2])
+    return msg1
 
 
 def send_whatsapp_text(to_e164: str, body: str) -> bool:

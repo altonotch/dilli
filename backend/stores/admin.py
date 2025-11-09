@@ -12,7 +12,7 @@ class StoreChainAdmin(admin.ModelAdmin):
 
 
 @admin.register(Store)
-class StoreAdmin(gis_admin.OSMGeoAdmin):
+class StoreAdmin(gis_admin.GISModelAdmin):
     list_display = ("__str__", "chain", "city", "is_active")
     list_filter = ("chain", "city", "is_active")
     search_fields = ("name", "display_name", "city", "address")

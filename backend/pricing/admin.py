@@ -5,8 +5,19 @@ from .models import PriceReport, StoreProductSnapshot
 
 @admin.register(PriceReport)
 class PriceReportAdmin(admin.ModelAdmin):
-    list_display = ("id", "product", "store", "price", "observed_at", "user", "source")
-    list_filter = ("source", "observed_at")
+    list_display = (
+        "id",
+        "product",
+        "store",
+        "price",
+        "units_in_price",
+        "is_for_club_members_only",
+        "min_cart_total",
+        "observed_at",
+        "user",
+        "source",
+    )
+    list_filter = ("source", "observed_at", "units_in_price", "is_for_club_members_only")
     search_fields = ("product__name_he", "product__name_en", "store__name", "store__city")
     autocomplete_fields = ("product", "store", "user")
     readonly_fields = ("created_at",)

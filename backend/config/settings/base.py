@@ -15,7 +15,7 @@ import os
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Load environment variables from .env in the project root
 load_dotenv(BASE_DIR / ".env")
@@ -27,9 +27,9 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-(m8)*i*-kc%gc+-%n=0y5348bb!=a656#*z^cz44f+*+9jvs^*')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() in ('1', 'true', 't', 'yes', 'y', 'on')
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
 
 
 # Application definition
@@ -42,7 +42,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-'axes',
+    'axes',
+    'catalog',
+    'stores',
+    'pricing',
     'whatsapp',
 ]
 
@@ -87,13 +90,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': os.getenv('DB_NAME', 'postgres'),
         'USER': os.getenv('DB_USER', 'postgres'),
         'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5436'),
-    }
+    },
 }
 
 
@@ -168,6 +171,4 @@ REST_FRAMEWORK = {
     },
 }
 
-# Dev-only apps
-if DEBUG:
-    INSTALLED_APPS += ['django_extensions']
+# Placeholder for environment-specific extensions (e.g., dev/test)

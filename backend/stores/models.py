@@ -1,6 +1,5 @@
 from __future__ import annotations
 from django.contrib.gis.db import models as gis_models
-from django.contrib.gis.db.models import indexes as gis_indexes
 from django.db import models
 
 
@@ -50,7 +49,6 @@ class Store(models.Model):
         indexes = [
             models.Index(fields=["city", "name"], name="store_city_name_idx"),
             models.Index(fields=["chain", "city"], name="store_chain_city_idx"),
-            gis_indexes.SpatialIndex(fields=["location"], name="store_location_gix"),
         ]
 
     def __str__(self) -> str:  # pragma: no cover
