@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-10 08:06+0000\n"
+"POT-Creation-Date: 2025-11-10 11:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,6 +18,106 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=4; plural=(n == 1 && n % 1 == 0) ? 0 : (n == 2 && n % "
 "1 == 0) ? 1: (n % 10 == 0 && n % 1 == 0 && n > 10) ? 2 : 3;\n"
+
+#: pricing/admin.py:14 templates/admin/pricing/pricereport/change_list.html:49
+msgid "Rejection reason"
+msgstr ""
+
+#: pricing/admin.py:15
+msgid "Provide a reason when rejecting reports."
+msgstr ""
+
+#: pricing/admin.py:50 templates/admin/pricing/pricereport/change_list.html:45
+msgid "Approve selected price reports"
+msgstr ""
+
+#: pricing/admin.py:58
+#, python-format
+msgid "Marked %(count)s report(s) as approved."
+msgstr ""
+
+#: pricing/admin.py:62 templates/admin/pricing/pricereport/change_list.html:46
+msgid "Reject selected price reports"
+msgstr "דחו את הדוחות שנבחרו"
+
+#: pricing/admin.py:68
+msgid "Please provide a rejection reason in the action form."
+msgstr "אנא ציינו סיבת דחייה בטופס הפעולה."
+
+#: pricing/admin.py:78
+#, python-format
+msgid "Rejected %(count)s report(s)."
+msgstr "נדחו %(count)s דוחות."
+
+#: pricing/admin.py:118
+#, python-format
+msgid ""
+"Your deal for %(product)s at %(store)s (%(price)s₪) was approved! Thanks for "
+"helping everyone save."
+msgstr ""
+"הדיל ששלחתם עבור %(product)s ב%(store)s במחיר %(price)s₪ אושר! תודה על העזרה "
+"לכולם לחסוך."
+
+#: stores/admin.py:28
+msgid "Geocode selected stores via Geoapify"
+msgstr "קבלו מיקום מהיר בעזרת Geoapify"
+
+#: stores/admin.py:36
+#, python-format
+msgid "Geoapify error for %(store)s: %(error)s"
+msgstr "שגיאת Geoapify עבור %(store)s: %(error)s"
+
+#: stores/admin.py:39
+#, python-format
+msgid "No result found for %(store)s"
+msgstr "לא נמצאה תוצאה עבור %(store)s"
+
+#: stores/admin.py:49
+#, python-format
+msgid "Updated %(count)s store(s) with Geoapify results."
+msgstr "עודכנו %(count)s חנויות בעזרת Geoapify."
+
+#: templates/admin/pricing/pricereport/change_list.html:7
+msgid "Moderation Queue"
+msgstr ""
+
+#: templates/admin/pricing/pricereport/change_list.html:14
+msgid "Select"
+msgstr ""
+
+#: templates/admin/pricing/pricereport/change_list.html:15
+msgid "Report"
+msgstr ""
+
+#: templates/admin/pricing/pricereport/change_list.html:16
+msgid "Session data"
+msgstr ""
+
+#: templates/admin/pricing/pricereport/change_list.html:26
+msgid "units"
+msgstr ""
+
+#: templates/admin/pricing/pricereport/change_list.html:27
+#, fuzzy
+#| msgid "Club members only: no"
+msgid "Club members only"
+msgstr "רק לחברי מועדון: לא"
+
+#: templates/admin/pricing/pricereport/change_list.html:28
+msgid "Min cart"
+msgstr ""
+
+#: templates/admin/pricing/pricereport/change_list.html:35
+msgid "No session data"
+msgstr ""
+
+#: templates/admin/pricing/pricereport/change_list.html:43
+msgid "Action"
+msgstr ""
+
+#: templates/admin/pricing/pricereport/change_list.html:50
+msgid "Execute"
+msgstr ""
 
 #: whatsapp/deal_flow.py:53
 msgid "Please send a reply so I can continue."
@@ -159,7 +259,11 @@ msgstr ""
 msgid "Status: awaiting moderation"
 msgstr "סטטוס: ממתין לאישור צוות"
 
-#: whatsapp/deal_flow.py:345
+#: whatsapp/deal_flow.py:247
+msgid "Thank you for helping the community save together!"
+msgstr ""
+
+#: whatsapp/deal_flow.py:371
 #, python-format
 msgid "Limit per shopper: %(limit)s"
 msgstr "הגבלה ללקוח: %(limit)s"
@@ -201,7 +305,7 @@ msgstr "הוסף דיל"
 msgid "Find a deal"
 msgstr "מצא דיל"
 
-#: whatsapp/views.py:137
+#: whatsapp/views.py:143
 msgid ""
 "Deal search is coming soon. In the meantime you can type something like "
 "“Find milk 3%”."

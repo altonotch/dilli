@@ -13,6 +13,7 @@ class WAUser(models.Model):
     # Identity
     wa_id_hash = models.CharField(max_length=64, unique=True)
     wa_last4 = models.CharField(max_length=4, blank=True, null=True, help_text="Support-only lookup; do not store full number")
+    wa_number = models.CharField(max_length=32, blank=True, help_text="Digits-only WhatsApp ID (E.164); used for proactive notifications.")
 
     # Profile (optional)
     display_name = models.CharField(max_length=255, blank=True)
@@ -76,5 +77,34 @@ class DealReportSession(models.Model):
 
     def reset(self) -> None:
         self.step = self.Steps.STORE
+        self.data = {}
+        self.is_active = True
+
+
+class DealLookupSession(models.Model):
+    """Tracks a guided flow where the user searches for deals."""
+
+    class Steps(models.TextChoices):
+        PRODUCT = "product", "product"
+        LOCATION = "location", "location"
+        COMPLETE = "complete", "complete"
+        CANCELED = "canceled", "canceled"
+
+    user = models.ForeignKey(WAUser, on_delete=models.CASCADE, related_name="deal_lookup_sessions")
+    step = models.CharField(max_length=20, choices=Steps.choices, default=Steps.PRODUCT)
+    data = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "is_active"]),
+            models.Index(fields=["updated_at"]),
+        ]
+        ordering = ["-updated_at"]
+
+    def reset(self) -> None:
+        self.step = self.Steps.PRODUCT
         self.data = {}
         self.is_active = True

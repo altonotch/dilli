@@ -1,0 +1,56 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block content %}
+  {% if queue %}
+    <div class="module">
+      <h2>{% trans "Moderation Queue" %}</h2>
+      <form method="post" action="">
+        {% csrf_token %}
+        <input type="hidden" name="from_queue" value="1">
+        <table class="adminlist">
+          <thead>
+            <tr>
+              <th>{% trans "Select" %}</th>
+              <th>{% trans "Report" %}</th>
+              <th>{% trans "Session data" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for entry in queue %}
+            <tr>
+              <td><input type="checkbox" name="_selected_action" value="{{ entry.report.pk }}"></td>
+              <td>
+                <strong>{{ entry.report.product }}</strong><br>
+                {{ entry.report.store }}<br>
+                {{ entry.report.price }} ₪ · {{ entry.report.units_in_price }} {% trans "units" %}<br>
+                {% if entry.report.is_for_club_members_only %}{% trans "Club members only" %}<br>{% endif %}
+                {% if entry.report.min_cart_total %}{% trans "Min cart" %}: {{ entry.report.min_cart_total }} ₪<br>{% endif %}
+                {% if entry.report.deal_notes %}{{ entry.report.deal_notes }}<br>{% endif %}
+              </td>
+              <td>
+                {% if entry.session_data %}
+                  <pre>{{ entry.session_data|pprint }}</pre>
+                {% else %}
+                  {% trans "No session data" %}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <div>
+          <label>{% trans "Action" %}:
+            <select name="action">
+              <option value="mark_reports_approved">{% trans "Approve selected price reports" %}</option>
+              <option value="mark_reports_rejected">{% trans "Reject selected price reports" %}</option>
+            </select>
+          </label>
+          <label>{% trans "Rejection reason" %}: <input type="text" name="rejection_reason"></label>
+          <button type="submit" class="button">{% trans "Execute" %}</button>
+        </div>
+      </form>
+    </div>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}

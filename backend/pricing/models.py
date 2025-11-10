@@ -1,4 +1,5 @@
 from __future__ import annotations
+from django.conf import settings
 from django.db import models
 
 PRICE_DECIMAL_PLACES = 2
@@ -40,6 +41,20 @@ class PriceReport(models.Model):
         db_index=True,
         help_text="True until a moderator validates the report.",
     )
+    moderated_at = models.DateTimeField(null=True, blank=True, help_text="Timestamp of the last moderation action.")
+    moderated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="moderated_price_reports",
+        help_text="Admin who last moderated this report.",
+    )
+    moderation_reason = models.CharField(
+        max_length=240,
+        blank=True,
+        help_text="Optional reason or note recorded by the moderator (e.g., rejection cause).",
+    )
     observed_at = models.DateTimeField(db_index=True)
 
     # Optional extras
@@ -70,6 +85,7 @@ class StoreProductSnapshot(models.Model):
     last_price = models.DecimalField(max_digits=PRICE_MAX_DIGITS, decimal_places=PRICE_DECIMAL_PLACES)
     last_observed_at = models.DateTimeField()
     updated_at = models.DateTimeField(auto_now=True)
+    confirmation_count = models.PositiveIntegerField(default=0, help_text="Number of approved user reports confirming this price.")
 
     class Meta:
         unique_together = [("product", "store")]

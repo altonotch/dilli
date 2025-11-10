@@ -6,6 +6,8 @@ from django.db import models
 class StoreChain(models.Model):
     """Optional chain/brand for stores. Local makolet stores can have chain=None."""
     name = models.CharField(max_length=120, unique=True)
+    name_he = models.CharField(max_length=120, blank=True)
+    name_en = models.CharField(max_length=120, blank=True)
     slug = models.SlugField(max_length=140, unique=True)
     is_active = models.BooleanField(default=True)
 
@@ -14,7 +16,16 @@ class StoreChain(models.Model):
         verbose_name_plural = "Store Chains"
 
     def __str__(self) -> str:  # pragma: no cover
-        return self.name
+        return self.name or self.name_en or self.name_he or str(self.pk)
+
+    def save(self, *args, **kwargs):
+        if not self.name_he and self.name:
+            self.name_he = self.name
+        if not self.name_en and self.name:
+            self.name_en = self.name
+        if not self.name:
+            self.name = self.name_en or self.name_he or ""
+        super().save(*args, **kwargs)
 
 
 class Store(models.Model):
@@ -28,6 +39,8 @@ class Store(models.Model):
     )
     # Human name for the branch/store (e.g., "Givat Tal" or the store's full name)
     name = models.CharField(max_length=160)
+    name_he = models.CharField(max_length=160, blank=True)
+    name_en = models.CharField(max_length=160, blank=True)
     display_name = models.CharField(max_length=200, blank=True)
 
     address = models.CharField(max_length=255, blank=True)
@@ -55,3 +68,12 @@ class Store(models.Model):
         prefix = f"{self.chain.name} " if self.chain else ""
         city = f", {self.city}" if self.city else ""
         return f"{prefix}{self.name}{city}"
+
+    def save(self, *args, **kwargs):
+        if not self.name_he and self.name:
+            self.name_he = self.name
+        if not self.name_en and self.name:
+            self.name_en = self.name
+        if not self.name:
+            self.name = self.name_en or self.name_he or ""
+        super().save(*args, **kwargs)

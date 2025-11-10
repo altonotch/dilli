@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from django.utils.translation import gettext as _
 
-from .models import WAUser
+from .models import WAUser, DealLookupSession
 from .utils import (
     normalize_wa_id,
     compute_wa_hash,
@@ -29,6 +29,11 @@ from .utils import (
 from .deal_flow import (
     start_add_deal_flow,
     handle_deal_flow_response,
+)
+from .search_flow import (
+    start_find_deal_flow,
+    handle_find_deal_text,
+    handle_find_deal_location,
 )
 from .throttling import IPRateThrottle, WaHashRateThrottle
 
@@ -88,6 +93,8 @@ class MetaWebhookView(APIView):
                     defaults = {
                         "consent_ts": timezone.now(),
                         "role": WAUser.Roles.USER,
+                        "wa_number": wa_norm,
+                        "wa_last4": wa_norm[-4:] if len(wa_norm) >= 4 else "",
                     }
                     # Optional locale detection and/or explicit language choice
                     try:
@@ -119,8 +126,12 @@ class MetaWebhookView(APIView):
                     defaults["wa_last4"] = wa_norm[-4:] if len(wa_norm) >= 4 else None
 
                     obj, created = WAUser.objects.get_or_create(wa_id_hash=wa_hash, defaults=defaults)
-                    # Update last_seen on any contact
-                    WAUser.objects.filter(pk=obj.pk).update(last_seen=timezone.now())
+                    # Update contact fields on any message
+                    WAUser.objects.filter(pk=obj.pk).update(
+                        last_seen=timezone.now(),
+                        wa_number=wa_norm,
+                        wa_last4=wa_norm[-4:] if len(wa_norm) >= 4 else None,
+                    )
 
                     # Determine current effective locale
                     current_locale = normalize_locale(getattr(obj, 'locale', None) or defaults.get('locale') or 'he')
@@ -132,11 +143,8 @@ class MetaWebhookView(APIView):
                             processed += 1
                             continue
                         if button_reply_id == "find_deal":
-                            with translation.override(current_locale):
-                                msg = _(
-                                    "Deal search is coming soon. In the meantime you can type something like “Find milk 3%”."
-                                )
-                            send_whatsapp_text(wa_norm, msg)
+                            question = start_find_deal_flow(obj, current_locale)
+                            send_whatsapp_text(wa_norm, question)
                             processed += 1
                             continue
 
@@ -165,6 +173,25 @@ class MetaWebhookView(APIView):
                             send_whatsapp_text(wa_norm, flow_reply)
                             processed += 1
                             continue
+
+                        # Deal lookup flow (text)
+                        lookup_reply = handle_find_deal_text(obj, current_locale, body_text)
+                        if lookup_reply:
+                            send_whatsapp_text(wa_norm, lookup_reply)
+                            processed += 1
+                            continue
+
+                        # Location-based find flow
+                        if message_type == "location":
+                            location_reply = handle_find_deal_location(
+                                obj,
+                                current_locale,
+                                msg.get("location") or {},
+                            )
+                            if location_reply:
+                                send_whatsapp_text(wa_norm, location_reply)
+                                processed += 1
+                                continue
                     except Exception:
                         logger.exception("failed to send onboarding/flow message to %s", wa_norm)
 

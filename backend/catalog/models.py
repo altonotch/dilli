@@ -34,6 +34,13 @@ class Product(models.Model):
     def __str__(self) -> str:  # pragma: no cover
         return self.name_he or self.name_en
 
+    def save(self, *args, **kwargs):
+        if not self.name_en:
+            self.name_en = self.name_he
+        if not self.name_he:
+            self.name_he = self.name_en
+        super().save(*args, **kwargs)
+
 
 class StoreProduct(models.Model):
     """Through model for Product×Store availability/metadata.

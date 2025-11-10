@@ -244,7 +244,8 @@ def _format_summary(data: dict, locale: str) -> str:
             "You can tap “Add a deal” to share another one."
         )
         moderation = _("Status: awaiting moderation")
-        return f"{summary}\n\n{moderation}\n\n{closing}"
+        gratitude = _("Thank you for helping the community save together!")
+        return f"{summary}\n\n{moderation}\n\n{closing}\n{gratitude}"
 
 
 _STEP_HANDLERS = {
@@ -308,35 +309,60 @@ def _persist_price_report(session: DealReportSession, user: WAUser) -> Optional[
     return price_report
 
 
+def _normalize_text(value: str) -> str:
+    return (value or "").strip()
+
+
 def _get_or_create_store(data: dict) -> Store:
-    name = (data.get("store_name") or "Unknown store").strip()
-    city = (data.get("city") or "").strip()
-    qs = Store.objects.filter(name__iexact=name)
+    name = _normalize_text(data.get("store_name")) or "Unknown store"
+    city = _normalize_text(data.get("city"))
+    store = _match_store(name, city)
+    if store:
+        return store
+    return Store.objects.create(
+        name=name,
+        display_name=name,
+        city=city,
+    )
+
+
+def _match_store(name: str, city: str) -> Store | None:
+    qs = Store.objects.all()
     if city:
         qs = qs.filter(city__iexact=city)
-    store = qs.first()
-    if not store:
-        store = Store.objects.create(
-            name=name or "Unknown store",
-            display_name=name,
-            city=city,
-        )
-    return store
+    candidates = qs.filter(name__iexact=name)
+    store = candidates.first()
+    if store:
+        return store
+    if len(name) >= 3:
+        partial = qs.filter(name__icontains=name[:3])
+        return partial.first()
+    return None
 
 
 def _get_or_create_product(data: dict) -> Product:
-    name = (data.get("product_name") or "Unknown product").strip()
-    if not name:
-        name = "Unknown product"
+    name = _normalize_text(data.get("product_name")) or "Unknown product"
+    product = _match_product(name)
+    if product:
+        return product
+    return Product.objects.create(
+        name_he=name,
+        name_en=name,
+        brand="",
+        variant="",
+    )
+
+
+def _match_product(name: str) -> Product | None:
     product = Product.objects.filter(name_he__iexact=name).first()
-    if not product:
-        product = Product.objects.create(
-            name_he=name,
-            name_en=name,
-            brand="",
-            variant="",
-        )
-    return product
+    if product:
+        return product
+    product = Product.objects.filter(name_en__iexact=name).first()
+    if product:
+        return product
+    if len(name) >= 3:
+        return Product.objects.filter(name_he__icontains=name[:3]).first()
+    return None
 
 
 def _build_deal_notes(limit_qty) -> str:

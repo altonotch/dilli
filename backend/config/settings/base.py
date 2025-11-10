@@ -158,6 +158,10 @@ WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
 META_APP_SECRET = os.getenv('META_APP_SECRET', '')
 WHATSAPP_VERIFY_TOKEN = os.getenv('WHATSAPP_VERIFY_TOKEN', '')
 WA_SALT = os.getenv('WA_SALT', '')
+GEOAPIFY_API_KEY = os.getenv('GEOAPIFY_API_KEY', '')
+
+# Axes configuration
+AXES_DISABLE_ACCESS_LOG = True
 
 # DRF configuration
 REST_FRAMEWORK = {

@@ -4,6 +4,8 @@ from decimal import Decimal
 
 from django.test import TestCase
 
+from catalog.models import Product
+from stores.models import Store
 from whatsapp.models import WAUser, DealReportSession
 from whatsapp.deal_flow import start_add_deal_flow, handle_deal_flow_response
 from pricing.models import PriceReport
@@ -74,3 +76,28 @@ class DealFlowTests(TestCase):
         self.assertFalse(session.is_active)
         self.assertEqual(session.step, DealReportSession.Steps.CANCELED)
         self.assertEqual(PriceReport.objects.count(), 0)
+
+    def test_existing_store_and_product_are_reused(self):
+        locale = "en"
+        existing_store = Store.objects.create(name="Shufersal Givat Tal", city="Rosh HaAyin")
+        existing_product = Product.objects.create(name_he="Milk 3% 1L", name_en="Milk 3% 1L")
+
+        start_add_deal_flow(self.user, locale)
+        flow_answers = [
+            "Shufersal Givat Tal",
+            "Rosh HaAyin",
+            "Milk 3% 1L",
+            "4.50",
+            "1",
+            "no",
+            "no",
+            "no",
+        ]
+        summary = None
+        for answer in flow_answers:
+            summary = handle_deal_flow_response(self.user, locale, answer)
+
+        self.assertIn("Shufersal Givat Tal", summary)
+        report = PriceReport.objects.get()
+        self.assertEqual(report.store_id, existing_store.id)
+        self.assertEqual(report.product_id, existing_product.id)
