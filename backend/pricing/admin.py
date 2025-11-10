@@ -13,11 +13,18 @@ class PriceReportAdmin(admin.ModelAdmin):
         "units_in_price",
         "is_for_club_members_only",
         "min_cart_total",
+        "needs_moderation",
         "observed_at",
         "user",
         "source",
     )
-    list_filter = ("source", "observed_at", "units_in_price", "is_for_club_members_only")
+    list_filter = (
+        "source",
+        "observed_at",
+        "units_in_price",
+        "is_for_club_members_only",
+        "needs_moderation",
+    )
     search_fields = ("product__name_he", "product__name_en", "store__name", "store__city")
     autocomplete_fields = ("product", "store", "user")
     readonly_fields = ("created_at",)

@@ -43,3 +43,38 @@ class WAUser(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"WAUser({self.id})"
+
+
+class DealReportSession(models.Model):
+    """Tracks a multi-step WhatsApp flow where the user shares a new deal."""
+
+    class Steps(models.TextChoices):
+        STORE = "store", "store"
+        CITY = "city", "city"
+        PRODUCT = "product", "product"
+        PRICE = "price", "price"
+        UNITS = "units", "units"
+        CLUB = "club", "club"
+        LIMIT = "limit", "limit"
+        CART = "cart", "cart"
+        COMPLETE = "complete", "complete"
+        CANCELED = "canceled", "canceled"
+
+    user = models.ForeignKey(WAUser, on_delete=models.CASCADE, related_name="deal_sessions")
+    step = models.CharField(max_length=20, choices=Steps.choices, default=Steps.STORE)
+    data = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "is_active"]),
+            models.Index(fields=["updated_at"]),
+        ]
+        ordering = ["-updated_at"]
+
+    def reset(self) -> None:
+        self.step = self.Steps.STORE
+        self.data = {}
+        self.is_active = True

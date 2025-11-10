@@ -6,11 +6,12 @@ from hashlib import sha256
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework import status
+from django.utils.translation import gettext as _
 
 from .models import WAUser
 from .utils import (
@@ -24,6 +25,10 @@ from .utils import (
     parse_language_choice,
     get_language_prompt,
     normalize_locale,
+)
+from .deal_flow import (
+    start_add_deal_flow,
+    handle_deal_flow_response,
 )
 from .throttling import IPRateThrottle, WaHashRateThrottle
 
@@ -86,9 +91,20 @@ class MetaWebhookView(APIView):
                     }
                     # Optional locale detection and/or explicit language choice
                     try:
-                        body_text = (msg.get("text") or {}).get("body") if isinstance(msg.get("text"), dict) else ""
+                        body_text = ""
+                        message_type = msg.get("type")
+                        if message_type == "text" and isinstance(msg.get("text"), dict):
+                            body_text = (msg.get("text") or {}).get("body", "")
                     except Exception:
                         body_text = ""
+                        message_type = msg.get("type")
+
+                    button_reply_id = None
+                    if msg.get("type") == "interactive" and isinstance(msg.get("interactive"), dict):
+                        interactive = msg["interactive"]
+                        if interactive.get("type") == "button_reply":
+                            button_reply = interactive.get("button_reply") or {}
+                            button_reply_id = button_reply.get("id")
 
                     lang_choice = parse_language_choice(body_text)
                     defaults["locale"] = lang_choice or detect_locale(body_text or "")
@@ -110,6 +126,20 @@ class MetaWebhookView(APIView):
                     current_locale = normalize_locale(getattr(obj, 'locale', None) or defaults.get('locale') or 'he')
 
                     try:
+                        if button_reply_id == "add_deal":
+                            question = start_add_deal_flow(obj, current_locale)
+                            send_whatsapp_text(wa_norm, question)
+                            processed += 1
+                            continue
+                        if button_reply_id == "find_deal":
+                            with translation.override(current_locale):
+                                msg = _(
+                                    "Deal search is coming soon. In the meantime you can type something like “Find milk 3%”."
+                                )
+                            send_whatsapp_text(wa_norm, msg)
+                            processed += 1
+                            continue
+
                         if lang_choice:
                             # User explicitly chose a language: persist and acknowledge with an intro
                             new_locale = normalize_locale(lang_choice)
@@ -121,12 +151,22 @@ class MetaWebhookView(APIView):
                             sent = send_whatsapp_buttons(wa_norm, intro, buttons)
                             if not sent:
                                 send_whatsapp_text(wa_norm, intro)
+                            processed += 1
+                            continue
                         elif created:
                             # New user without explicit choice: ask to select language
                             prompt = get_language_prompt()
                             send_whatsapp_text(wa_norm, prompt)
+                            processed += 1
+                            continue
+
+                        flow_reply = handle_deal_flow_response(obj, current_locale, body_text)
+                        if flow_reply:
+                            send_whatsapp_text(wa_norm, flow_reply)
+                            processed += 1
+                            continue
                     except Exception:
-                        logger.exception("failed to send onboarding message to %s", wa_norm)
+                        logger.exception("failed to send onboarding/flow message to %s", wa_norm)
 
                     processed += 1
 

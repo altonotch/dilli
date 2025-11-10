@@ -35,6 +35,11 @@ class PriceReport(models.Model):
         blank=True,
         help_text="Free-text qualifier for other deal conditions (e.g., loyalty-only, coupons).",
     )
+    needs_moderation = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="True until a moderator validates the report.",
+    )
     observed_at = models.DateTimeField(db_index=True)
 
     # Optional extras
