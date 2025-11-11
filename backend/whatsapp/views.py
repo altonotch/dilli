@@ -165,6 +165,13 @@ class MetaWebhookView(APIView):
                             processed += 1
                             continue
 
+                        flow_reply = handle_deal_flow_response(obj, current_locale, body_text)
+                        if flow_reply:
+                            logger.info("Deal flow response for %s: %s", wa_norm, flow_reply)
+                            send_whatsapp_text(wa_norm, flow_reply)
+                            processed += 1
+                            continue
+
                         if lang_choice:
                             # User explicitly chose a language: persist and acknowledge with an intro
                             new_locale = normalize_locale(lang_choice)
@@ -182,13 +189,6 @@ class MetaWebhookView(APIView):
                             # New user without explicit choice: ask to select language
                             prompt = get_language_prompt()
                             send_whatsapp_text(wa_norm, prompt)
-                            processed += 1
-                            continue
-
-                        flow_reply = handle_deal_flow_response(obj, current_locale, body_text)
-                        if flow_reply:
-                            logger.info("Deal flow response for %s: %s", wa_norm, flow_reply)
-                            send_whatsapp_text(wa_norm, flow_reply)
                             processed += 1
                             continue
 

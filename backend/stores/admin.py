@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.contrib.gis import admin as gis_admin
 from django.contrib.gis.geos import Point
 
-from .models import StoreChain, Store
+from .models import StoreChain, Store, City
 
 
 @admin.register(StoreChain)
@@ -12,6 +12,13 @@ class StoreChainAdmin(admin.ModelAdmin):
     list_display = ("name", "slug", "is_active")
     list_filter = ("is_active",)
     search_fields = ("name", "slug")
+
+
+@admin.register(City)
+class CityAdmin(admin.ModelAdmin):
+    list_display = ("display_name", "name_he", "name_en", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("name_he", "name_en", "slug")
 
 
 class StoreAdminForm(forms.ModelForm):
@@ -56,9 +63,9 @@ class StoreAdminForm(forms.ModelForm):
 @admin.register(Store)
 class StoreAdmin(gis_admin.GISModelAdmin):
     form = StoreAdminForm
-    list_display = ("__str__", "chain", "city", "is_active")
-    list_filter = ("chain", "city", "is_active")
-    search_fields = ("name", "display_name", "city", "address")
+    list_display = ("__str__", "chain", "city_obj", "is_active")
+    list_filter = ("chain", "city_obj", "is_active")
+    search_fields = ("name", "display_name", "city", "city_he", "city_en", "city_obj__name_he", "city_obj__name_en", "address")
     readonly_fields = ("created_at", "updated_at")
     # You can tune map defaults later
     default_zoom = 12

@@ -119,7 +119,13 @@ def _fetch_deals(product_query: str, data: dict, limit: int = 3) -> list[DealRes
 
     city = data.get("city")
     if city:
-        qs = qs.filter(store__city__iexact=city)
+        qs = qs.filter(
+            Q(store__city__iexact=city)
+            | Q(store__city_he__iexact=city)
+            | Q(store__city_en__iexact=city)
+            | Q(store__city_obj__name_he__iexact=city)
+            | Q(store__city_obj__name_en__iexact=city)
+        )
 
     lat = data.get("latitude")
     lon = data.get("longitude")
@@ -135,7 +141,13 @@ def _fetch_deals(product_query: str, data: dict, limit: int = 3) -> list[DealRes
                 product_name=report.product_text_raw or report.product.name_he,
                 price=str(report.price),
                 store_name=report.store.display_name or report.store.name,
-                city=report.store.city,
+                city=_store_city_display(report.store),
             )
         )
     return results
+
+
+def _store_city_display(store: Store) -> str:
+    if store.city_obj:
+        return store.city_obj.display_name
+    return store.city or store.city_en or store.city_he or ""

@@ -43,7 +43,16 @@ class PriceReportAdmin(admin.ModelAdmin):
         "is_for_club_members_only",
         "needs_moderation",
     )
-    search_fields = ("product__name_he", "product__name_en", "store__name", "store__city")
+    search_fields = (
+        "product__name_he",
+        "product__name_en",
+        "store__name",
+        "store__city",
+        "store__city_he",
+        "store__city_en",
+        "store__city_obj__name_he",
+        "store__city_obj__name_en",
+    )
     autocomplete_fields = ("product", "store", "user")
     readonly_fields = ("created_at", "moderated_at", "moderated_by")
     date_hierarchy = "observed_at"
@@ -133,7 +142,16 @@ class PriceReportAdmin(admin.ModelAdmin):
 @admin.register(StoreProductSnapshot)
 class StoreProductSnapshotAdmin(admin.ModelAdmin):
     list_display = ("id", "product", "store", "last_price", "last_observed_at", "confirmation_count", "updated_at")
-    search_fields = ("product__name_he", "product__name_en", "store__name", "store__city")
+    search_fields = (
+        "product__name_he",
+        "product__name_en",
+        "store__name",
+        "store__city",
+        "store__city_he",
+        "store__city_en",
+        "store__city_obj__name_he",
+        "store__city_obj__name_en",
+    )
     list_filter = ("last_observed_at",)
     autocomplete_fields = ("product", "store")
     def changelist_view(self, request, extra_context=None):

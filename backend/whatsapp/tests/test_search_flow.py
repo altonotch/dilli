@@ -4,7 +4,7 @@ from django.contrib.gis.geos import Point
 from django.test import TestCase
 
 from catalog.models import Product
-from stores.models import Store
+from stores.models import Store, City
 from pricing.models import PriceReport
 from whatsapp.models import WAUser
 from whatsapp.search_flow import start_find_deal_flow, handle_find_deal_text, handle_find_deal_location
@@ -13,7 +13,13 @@ from whatsapp.search_flow import start_find_deal_flow, handle_find_deal_text, ha
 class SearchFlowTests(TestCase):
     def setUp(self) -> None:
         self.user = WAUser.objects.create(wa_id_hash="hash", locale="en")
-        self.store = Store.objects.create(name="Test Store", city="Tel Aviv", location=Point(34.78, 32.08))
+        self.city = City.objects.create(name_he="תל אביב", name_en="Tel Aviv")
+        self.store = Store.objects.create(
+            name="Test Store",
+            city="Tel Aviv",
+            city_obj=self.city,
+            location=Point(34.78, 32.08),
+        )
         self.product = Product.objects.create(name_he="Milk", name_en="Milk")
         PriceReport.objects.create(
             user=self.user,

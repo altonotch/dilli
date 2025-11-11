@@ -1,13 +1,14 @@
 from __future__ import annotations
 from decimal import Decimal, InvalidOperation
-from typing import Optional
+from typing import Optional, Sequence
 import logging
 
+from django.db.models import Q
 from django.utils import translation, timezone
 from django.utils.translation import gettext as _
 
 from catalog.models import Product
-from stores.models import Store
+from stores.models import Store, City
 from pricing.models import PriceReport
 
 from .models import DealReportSession, WAUser
@@ -15,11 +16,12 @@ from .models import DealReportSession, WAUser
 QUESTION_SEQUENCE = [
     DealReportSession.Steps.STORE,
     DealReportSession.Steps.CITY,
+    DealReportSession.Steps.STORE_CONFIRM,
     DealReportSession.Steps.PRODUCT,
-    DealReportSession.Steps.PRICE,
-    DealReportSession.Steps.UNITS,
     DealReportSession.Steps.UNIT_TYPE,
     DealReportSession.Steps.UNIT_QUANTITY,
+    DealReportSession.Steps.PRICE,
+    DealReportSession.Steps.UNITS,
     DealReportSession.Steps.CLUB,
     DealReportSession.Steps.LIMIT,
     DealReportSession.Steps.CART,
@@ -30,6 +32,47 @@ logger = logging.getLogger(__name__)
 CANCEL_KEYWORDS = {"cancel", "stop", "בטל", "ביטול", "סיים", "סיום"}
 YES_KEYWORDS = {"yes", "y", "yeah", "כן", "yep", "si"}
 NO_KEYWORDS = {"no", "n", "not", "לא", "nope", "אין"}
+MAX_STORE_CHOICES = 5
+
+
+def _contains_hebrew(value: str) -> bool:
+    return any("\u0590" <= ch <= "\u05FF" for ch in value or "")
+
+
+def _contains_latin(value: str) -> bool:
+    return any(
+        ("a" <= ch <= "z") or ("A" <= ch <= "Z")
+        for ch in value or ""
+    )
+
+
+def _city_query_values(data: dict) -> list[str]:
+    values: list[str] = []
+    for key in ("city", "city_he", "city_en"):
+        val = _normalize_text(data.get(key))
+        if val and val not in values:
+            values.append(val)
+    return values
+
+
+def _city_from_session(data: dict) -> Optional[City]:
+    city_id = data.get("city_id")
+    if city_id:
+        return City.objects.filter(pk=city_id).first()
+    return None
+
+
+def _build_city_filter(values: Sequence[str]) -> Q:
+    condition = Q()
+    for city in values:
+        condition |= (
+            Q(city__iexact=city)
+            | Q(city_he__iexact=city)
+            | Q(city_en__iexact=city)
+            | Q(city_obj__name_he__iexact=city)
+            | Q(city_obj__name_en__iexact=city)
+        )
+    return condition
 
 
 def start_add_deal_flow(user: WAUser, locale: str) -> str:
@@ -37,7 +80,7 @@ def start_add_deal_flow(user: WAUser, locale: str) -> str:
         is_active=False, step=DealReportSession.Steps.CANCELED
     )
     session = DealReportSession.objects.create(user=user)
-    return _question_text(session.step, locale)
+    return _question_text(session, locale)
 
 
 def handle_deal_flow_response(user: WAUser, locale: str, message_text: Optional[str]) -> Optional[str]:
@@ -74,7 +117,7 @@ def handle_deal_flow_response(user: WAUser, locale: str, message_text: Optional[
 
         # If handler returned None, we already advanced and should ask next question
         if session.step in QUESTION_SEQUENCE:
-            return _question_text(session.step, locale)
+            return _question_text(session, locale)
         else:
             summary = _format_summary(session.data, locale)
             try:
@@ -84,8 +127,13 @@ def handle_deal_flow_response(user: WAUser, locale: str, message_text: Optional[
             return summary
 
 
-def _question_text(step: str, locale: str) -> str:
+def _question_text(session: DealReportSession, locale: str) -> str:
+    step = session.step
+    data = session.data or {}
     with translation.override(locale):
+        if step == DealReportSession.Steps.STORE_CONFIRM:
+            return _format_store_choice_prompt(data)
+
         prompts = {
             DealReportSession.Steps.STORE: _(
                 "Which store or branch is this deal from?\nExample: “Shufersal Givat Tal”."
@@ -96,17 +144,17 @@ def _question_text(step: str, locale: str) -> str:
             DealReportSession.Steps.PRODUCT: _(
                 "What product is this? Include brand and size if possible."
             ),
-            DealReportSession.Steps.PRICE: _(
-                "What is the price? Reply with numbers only (e.g., 4.90)."
-            ),
-            DealReportSession.Steps.UNITS: _(
-                "How many units does this price cover? Reply with a number (default 1)."
-            ),
             DealReportSession.Steps.UNIT_TYPE: _(
                 "What unit is the package? (e.g., liter, kilogram, pack)."
             ),
             DealReportSession.Steps.UNIT_QUANTITY: _(
                 "How many of that unit are in the package? Reply with a number (e.g., 1, 1.5, 2)."
+            ),
+            DealReportSession.Steps.PRICE: _(
+                "What is the price? Reply with numbers only (e.g., 4.90)."
+            ),
+            DealReportSession.Steps.UNITS: _(
+                "How many units does this price cover? Reply with a number (default 1)."
             ),
             DealReportSession.Steps.CLUB: _(
                 "Is this deal only for club/loyalty members? Reply “yes” or “no”."
@@ -119,6 +167,35 @@ def _question_text(step: str, locale: str) -> str:
             ),
         }
         return prompts.get(step, _("Thanks!"))
+
+
+def _format_store_choice_prompt(data: dict) -> str:
+    choices: Sequence[dict] = data.get("store_choices") or []
+    store_name = data.get("store_name") or _("this store")
+    city_values = _city_query_values(data)
+    city_obj = _city_from_session(data)
+    city_label = city_obj.display_name if city_obj else (city_values[0] if city_values else "")
+    if not choices:
+        return _("Please tell me which branch %(store)s is so I can match the right location.") % {
+            "store": store_name,
+        }
+    lines = [
+        _("I found a few stores named %(store)s in %(city)s:") % {
+            "store": store_name,
+            "city": city_label or _("this city"),
+        }
+    ]
+    for idx, choice in enumerate(choices, 1):
+        label = choice.get("label") or choice.get("name") or store_name
+        detail = choice.get("address") or choice.get("city") or ""
+        if detail:
+            lines.append(_("%(index)s) %(label)s — %(detail)s") % {"index": idx, "label": label, "detail": detail})
+        else:
+            lines.append(_("%(index)s) %(label)s") % {"index": idx, "label": label})
+    lines.append(
+        _("Reply with the matching number, or type the branch/address if it's not in this list.")
+    )
+    return "\n".join(lines)
 
 
 def _advance(session: DealReportSession, target_step: str | None = None) -> None:
@@ -141,13 +218,116 @@ def _update_data(session: DealReportSession, **updates) -> None:
 
 
 def _handle_store(session: DealReportSession, text: str) -> None:
-    _update_data(session, store_name=text)
+    _update_data(session, store_name=text, store_id=None, store_detail=None, store_choices=[])
     _advance(session)
 
 
-def _handle_city(session: DealReportSession, text: str) -> None:
-    _update_data(session, city=text)
-    _advance(session)
+def _handle_city(session: DealReportSession, text: str) -> str | None:
+    cleaned = text.strip()
+    if not cleaned:
+        return _("Please tell me which city this store is in.")
+    updates = {"city": cleaned}
+    if _contains_hebrew(cleaned):
+        updates["city_he"] = cleaned
+    if _contains_latin(cleaned):
+        updates["city_en"] = cleaned
+    _update_data(session, **updates)
+
+    _ensure_city_reference(session)
+    if _maybe_request_store_choice(session):
+        return None
+    _advance(session, DealReportSession.Steps.PRODUCT)
+    return None
+
+
+def _ensure_city_reference(session: DealReportSession) -> Optional[City]:
+    data = session.data or {}
+    city = _city_from_session(data)
+    if city:
+        _update_data(session, city_he=city.name_he, city_en=city.name_en, city=city.display_name)
+        return city
+
+    city_he = _normalize_text(data.get("city_he"))
+    city_en = _normalize_text(data.get("city_en"))
+    fallback = _normalize_text(data.get("city"))
+
+    city = None
+    for candidate in (city_he, city_en, fallback):
+        if candidate:
+            city = _match_city(candidate)
+            if city:
+                break
+
+    if not city:
+        name_he = city_he or fallback or city_en
+        name_en = city_en or fallback or city_he
+        if not (name_he or name_en):
+            return None
+        city = City.objects.create(
+            name_he=name_he or name_en,
+            name_en=name_en or name_he,
+        )
+
+    _update_data(
+        session,
+        city_id=str(city.id),
+        city_he=city.name_he,
+        city_en=city.name_en,
+        city=city.display_name,
+    )
+    return city
+
+
+def _maybe_request_store_choice(session: DealReportSession) -> bool:
+    data = session.data or {}
+    store_name = _normalize_text(data.get("store_name"))
+    if not store_name:
+        return False
+
+    candidates = _find_store_candidates(store_name, data)
+    if len(candidates) <= 1:
+        if candidates:
+            _update_data(session, store_id=str(candidates[0].id))
+        _update_data(session, store_choices=[])
+        return False
+
+    serialized = [
+        {
+            "id": str(store.id),
+            "label": store.display_name or store.name,
+            "address": store.address or "",
+            "city": store.city or store.city_en or store.city_he or "",
+        }
+        for store in candidates[:MAX_STORE_CHOICES]
+    ]
+    _update_data(session, store_choices=serialized)
+    _advance(session, DealReportSession.Steps.STORE_CONFIRM)
+    return True
+
+
+def _handle_store_confirm(session: DealReportSession, text: str) -> Optional[str]:
+    data = session.data or {}
+    choices: Sequence[dict] = data.get("store_choices") or []
+    cleaned = text.strip()
+    if cleaned.isdigit() and choices:
+        idx = int(cleaned) - 1
+        if 0 <= idx < len(choices):
+            selection = choices[idx]
+            _update_data(session, store_id=selection.get("id"), store_choices=[])
+            _advance(session, DealReportSession.Steps.PRODUCT)
+            return None
+        return _("Please reply with a number between 1 and %(count)s, or type the branch name.") % {
+            "count": len(choices)
+        }
+
+    if cleaned:
+        _update_data(session, store_detail=cleaned, store_choices=[])
+        if _maybe_request_store_choice(session):
+            return None
+        _advance(session, DealReportSession.Steps.PRODUCT)
+        return None
+
+    return _("Please reply with the number from the list or describe the branch/address.")
 
 
 def _handle_product(session: DealReportSession, text: str) -> None:
@@ -179,27 +359,6 @@ def _handle_units(session: DealReportSession, text: str) -> str | None:
         if units <= 0:
             return _("Number of units must be at least 1.")
     _update_data(session, units_in_price=units)
-    # Decide next step: if we already know unit defaults, skip to club question
-    data = session.data or {}
-    product = _match_product(data.get("product_name", ""))
-    unit_type = data.get("unit_type")
-    unit_quantity = data.get("unit_quantity")
-
-    if not unit_type:
-        if product and product.default_unit_type:
-            _update_data(session, unit_type=product.default_unit_type)
-            unit_type = product.default_unit_type
-        else:
-            _advance(session, DealReportSession.Steps.UNIT_TYPE)
-            return None
-
-    if not unit_quantity:
-        if product and product.default_unit_quantity:
-            _update_data(session, unit_quantity=str(product.default_unit_quantity))
-        else:
-            _advance(session, DealReportSession.Steps.UNIT_QUANTITY)
-            return None
-
     _advance(session, DealReportSession.Steps.CLUB)
     return None
 
@@ -209,13 +368,7 @@ def _handle_unit_type(session: DealReportSession, text: str) -> str | None:
     if not cleaned:
         return _("Please specify the unit type (e.g., liter, kilogram, pack).")
     _update_data(session, unit_type=cleaned)
-    data = session.data or {}
-    product = _match_product(data.get("product_name", ""))
-    if product and product.default_unit_quantity:
-        _update_data(session, unit_quantity=str(product.default_unit_quantity))
-        _advance(session, DealReportSession.Steps.CLUB)
-    else:
-        _advance(session, DealReportSession.Steps.UNIT_QUANTITY)
+    _advance(session, DealReportSession.Steps.UNIT_QUANTITY)
     return None
 
 
@@ -228,7 +381,7 @@ def _handle_unit_quantity(session: DealReportSession, text: str) -> str | None:
     if quantity <= 0:
         return _("Quantity must be greater than zero.")
     _update_data(session, unit_quantity=str(quantity.quantize(Decimal("0.01"))))
-    _advance(session, DealReportSession.Steps.CLUB)
+    _advance(session, DealReportSession.Steps.PRICE)
     return None
 
 
@@ -278,9 +431,10 @@ def _handle_cart(session: DealReportSession, text: str) -> str | None:
 
 def _format_summary(data: dict, locale: str) -> str:
     with translation.override(locale):
+        city_value = _format_city_value(data, locale)
         lines = [
             _("Store: %(value)s") % {"value": data.get("store_name", "—")},
-            _("City: %(value)s") % {"value": data.get("city", "—")},
+            _("City: %(value)s") % {"value": city_value},
             _("Product: %(value)s") % {"value": data.get("product_name", "—")},
         ]
         price = data.get("price")
@@ -312,9 +466,31 @@ def _format_summary(data: dict, locale: str) -> str:
         return f"{summary}\n\n{moderation}\n\n{closing}\n{gratitude}"
 
 
+def _format_city_value(data: dict, locale: str) -> str:
+    city_obj = _city_from_session(data)
+    if city_obj:
+        primary = city_obj.name_en if locale.startswith("en") else city_obj.name_he
+        secondary = city_obj.name_he if locale.startswith("en") else city_obj.name_en
+        if secondary and secondary != primary:
+            return f"{primary} / {secondary}"
+        return primary or secondary or city_obj.display_name
+    city_he = data.get("city_he")
+    city_en = data.get("city_en")
+    fallback = data.get("city")
+    primary = city_en if locale.startswith("en") else city_he
+    secondary = city_he if locale.startswith("en") else city_en
+    if not primary:
+        primary = secondary or fallback or "—"
+        secondary = city_en if locale.startswith("en") else city_he
+    if secondary and secondary != primary:
+        return f"{primary} / {secondary}"
+    return primary or secondary or fallback or "—"
+
+
 _STEP_HANDLERS = {
     DealReportSession.Steps.STORE: _handle_store,
     DealReportSession.Steps.CITY: _handle_city,
+    DealReportSession.Steps.STORE_CONFIRM: _handle_store_confirm,
     DealReportSession.Steps.PRODUCT: _handle_product,
     DealReportSession.Steps.PRICE: _handle_price,
     DealReportSession.Steps.UNITS: _handle_units,
@@ -401,30 +577,128 @@ def _normalize_text(value: str) -> str:
 
 
 def _get_or_create_store(data: dict) -> Store:
+    store_id = data.get("store_id")
+    if store_id:
+        store = Store.objects.filter(pk=store_id).first()
+        if store:
+            return store
     name = _normalize_text(data.get("store_name")) or "Unknown store"
-    city = _normalize_text(data.get("city"))
-    store = _match_store(name, city)
+    city_he = _normalize_text(data.get("city_he"))
+    city_en = _normalize_text(data.get("city_en"))
+    city = _normalize_text(data.get("city")) or city_en or city_he
+    detail = _normalize_text(data.get("store_detail"))
+    city_obj = _city_from_session(data) or _match_city(city) or _match_city(city_he) or _match_city(city_en)
+    city_id = str(city_obj.id) if city_obj else None
+    store = _match_store(name, city_he, city_en, detail, city_id)
     if store:
         return store
+    display_name = f"{name} - {detail}" if detail else name
+    city_he_value = city_he if city_he else (city if _contains_hebrew(city) else "")
+    city_en_value = city_en if city_en else (city if _contains_latin(city) else "")
+    if city_obj is None and (city_he_value or city_en_value or city):
+        city_obj = City.objects.create(
+            name_he=city_he_value or city or city_en_value,
+            name_en=city_en_value or city or city_he_value,
+        )
     return Store.objects.create(
         name=name,
-        display_name=name,
-        city=city,
+        display_name=display_name,
+        city=city or "",
+        city_he=city_he_value,
+        city_en=city_en_value,
+        city_obj=city_obj,
+        address=data.get("store_detail") or "",
     )
 
 
-def _match_store(name: str, city: str) -> Store | None:
+def _match_store(
+    name: str,
+    city_he: Optional[str] = None,
+    city_en: Optional[str] = None,
+    detail: Optional[str] = None,
+    city_id: Optional[str] = None,
+) -> Store | None:
     qs = Store.objects.all()
-    if city:
-        qs = qs.filter(city__iexact=city)
-    candidates = qs.filter(name__iexact=name)
-    store = candidates.first()
+    city_values = [value for value in (_normalize_text(city_he), _normalize_text(city_en)) if value]
+    city_filter = _build_city_filter(city_values) if city_values else None
+    if city_id:
+        qs = qs.filter(city_obj_id=city_id)
+    elif city_filter:
+        qs = qs.filter(city_filter)
+    base_filter = Q(name__iexact=name) | Q(display_name__iexact=name)
+    matches = qs.filter(base_filter)
+    if detail:
+        detail_filter = (
+            Q(display_name__icontains=detail)
+            | Q(name__icontains=detail)
+            | Q(address__icontains=detail)
+        )
+        detailed = matches.filter(detail_filter)
+        if detailed.exists():
+            return detailed.first()
+    store = matches.first()
     if store:
         return store
     if len(name) >= 3:
-        partial = qs.filter(name__icontains=name[:3])
-        return partial.first()
+        partial_filter = Q(name__icontains=name[:3]) | Q(display_name__icontains=name[:3])
+        qs_partial = Store.objects.filter(partial_filter)
+        if city_filter:
+            qs_partial = qs_partial.filter(city_filter)
+        return qs_partial.first()
     return None
+
+
+def _find_store_candidates(name: str, data: dict) -> list[Store]:
+    base_qs = Store.objects.filter(is_active=True)
+    city_values = _city_query_values(data)
+    city_id = data.get("city_id")
+    if city_id:
+        base_qs = base_qs.filter(city_obj_id=city_id)
+    elif city_values:
+        base_qs = base_qs.filter(_build_city_filter(city_values))
+
+    base_filter = Q(name__iexact=name) | Q(display_name__iexact=name)
+    exact_qs = base_qs.filter(base_filter)
+
+    detail = _normalize_text(data.get("store_detail"))
+    if detail and exact_qs.exists():
+        detail_filter = (
+            Q(display_name__icontains=detail)
+            | Q(name__icontains=detail)
+            | Q(address__icontains=detail)
+        )
+        narrowed = exact_qs.filter(detail_filter)
+        if narrowed.exists():
+            exact_qs = narrowed
+
+    candidates: list[Store] = []
+    added_ids: set[int] = set()
+    for store in exact_qs:
+        candidates.append(store)
+        added_ids.add(store.id)
+        if len(candidates) >= MAX_STORE_CHOICES:
+            return candidates
+
+    chunk = name[:3] if len(name) >= 3 else name
+    if chunk:
+        partial_filter = Q(name__icontains=chunk) | Q(display_name__icontains=chunk)
+        partial_qs = base_qs.filter(partial_filter)
+        for store in partial_qs:
+            if store.id in added_ids:
+                continue
+            candidates.append(store)
+            added_ids.add(store.id)
+            if len(candidates) >= MAX_STORE_CHOICES:
+                break
+
+    return candidates
+
+
+def _match_city(name: Optional[str]) -> Optional[City]:
+    value = _normalize_text(name)
+    if not value:
+        return None
+    return City.objects.filter(Q(name_he__iexact=value) | Q(name_en__iexact=value)).first()
 
 
 def _get_or_create_product(data: dict) -> Product:

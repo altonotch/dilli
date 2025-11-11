@@ -124,6 +124,34 @@ msgstr ""
 msgid "Which city is the store in?"
 msgstr "באיזו עיר נמצא הסניף?"
 
+#: whatsapp/deal_flow.py:135
+msgid "Please also write the city name in Hebrew so we can match it with other reports."
+msgstr "אנא כתבו גם את שם העיר בעברית כדי שנוכל להתאים לדיווחים אחרים."
+
+#: whatsapp/deal_flow.py:137
+msgid "Please also write the city name in English so we can match it with other reports."
+msgstr "אנא כתבו גם את שם העיר באנגלית כדי שנוכל להתאים לדיווחים אחרים."
+
+#: whatsapp/deal_flow.py:141
+msgid "Please tell me which branch %(store)s is so I can match the right location."
+msgstr "ספרו לי איזה סניף של %(store)s זה כדי שאוכל לבחור את המיקום הנכון."
+
+#: whatsapp/deal_flow.py:145
+msgid "I found a few stores named %(store)s in %(city)s:"
+msgstr "מצאתי כמה חנויות בשם %(store)s ב%(city)s:"
+
+#: whatsapp/deal_flow.py:151
+msgid "%(index)s) %(label)s — %(detail)s"
+msgstr "%(index)s) %(label)s — %(detail)s"
+
+#: whatsapp/deal_flow.py:154
+msgid "%(index)s) %(label)s"
+msgstr "%(index)s) %(label)s"
+
+#: whatsapp/deal_flow.py:158
+msgid "Reply with the matching number, or type the branch/address if it's not in this list."
+msgstr "ענו עם המספר המתאים, או כתבו את שם/כתובת הסניף אם הוא לא מופיע כאן."
+
 #: whatsapp/deal_flow.py:97
 msgid "What product is this? Include brand and size if possible."
 msgstr "מהו המוצר? הוסיפו מותג וגודל אם אפשר."
@@ -182,6 +210,26 @@ msgstr "ענו במספר שלם, למשל 1 או 3."
 #: whatsapp/deal_flow.py:180
 msgid "Number of units must be at least 1."
 msgstr "מספר היחידות חייב להיות 1 ומעלה."
+
+#: whatsapp/deal_flow.py:188
+msgid "Please tell me which city this store is in."
+msgstr "ספרו לי באיזו עיר נמצא הסניף."
+
+#: whatsapp/deal_flow.py:203
+msgid "Please type the city name in English."
+msgstr "כתבו את שם העיר באנגלית."
+
+#: whatsapp/deal_flow.py:205
+msgid "Please type the city name in Hebrew."
+msgstr "כתבו את שם העיר בעברית."
+
+#: whatsapp/deal_flow.py:223
+msgid "Please reply with a number between 1 and %(count)s, or type the branch name."
+msgstr "ענו במספר בין 1 ל-%(count)s, או כתבו את שם הסניף."
+
+#: whatsapp/deal_flow.py:231
+msgid "Please reply with the number from the list or describe the branch/address."
+msgstr "ענו עם המספר מהרשימה או תארו את הסניף/הכתובת."
 
 #: whatsapp/deal_flow.py:210
 msgid "Please specify the unit type (e.g., liter, kilogram, pack)."
@@ -263,16 +311,12 @@ msgid "Minimum cart: %(amount)s"
 msgstr "סל מינימלי: %(amount)s"
 
 #: whatsapp/deal_flow.py:307
-#, fuzzy
-#| msgid ""
-#| "Thanks! We'll review this deal and let everyone know. You can tap “Add a "
-#| "deal” to share another one."
 msgid ""
 "Thanks! We'll review this deal and let everyone know. Tap “Add a deal” to "
 "share another price, or “Find a deal” to see recent reports."
 msgstr ""
-"תודה! נעבור על הדיל הזה ונעדכן את כולם. תוכלו ללחוץ \"הוסף דיל\" כדי לשתף "
-"עוד אחד."
+"תודה! נעבור על הדיל הזה ונעדכן את כולם. לחצו \"הוסף דיל\" כדי לשתף מחיר נוסף "
+"או \"מצא דיל\" כדי לראות דיווחים אחרונים."
 
 #: whatsapp/deal_flow.py:310
 msgid "Status: awaiting moderation"
@@ -353,23 +397,3 @@ msgstr "הוסף דיל"
 #: whatsapp/utils.py:99
 msgid "Find a deal"
 msgstr "מצא דיל"
-
-#~ msgid "Geocode selected stores via Geoapify"
-#~ msgstr "קבלו מיקום מהיר בעזרת Geoapify"
-
-#, python-format
-#~ msgid "Geoapify error for %(store)s: %(error)s"
-#~ msgstr "שגיאת Geoapify עבור %(store)s: %(error)s"
-
-#, python-format
-#~ msgid "No result found for %(store)s"
-#~ msgstr "לא נמצאה תוצאה עבור %(store)s"
-
-#, python-format
-#~ msgid "Updated %(count)s store(s) with Geoapify results."
-#~ msgstr "עודכנו %(count)s חנויות בעזרת Geoapify."
-
-#~ msgid ""
-#~ "Deal search is coming soon. In the meantime you can type something like "
-#~ "“Find milk 3%”."
-#~ msgstr "חיפוש דילים יגיע בקרוב. בינתיים אפשר לכתוב למשל \"מצא חלב 3%\"."
