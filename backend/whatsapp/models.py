@@ -56,6 +56,8 @@ class DealReportSession(models.Model):
         PRICE = "price", "price"
         UNITS = "units", "units"
         CLUB = "club", "club"
+        UNIT_TYPE = "unit_type", "unit_type"
+        UNIT_QUANTITY = "unit_quantity", "unit_quantity"
         LIMIT = "limit", "limit"
         CART = "cart", "cart"
         COMPLETE = "complete", "complete"

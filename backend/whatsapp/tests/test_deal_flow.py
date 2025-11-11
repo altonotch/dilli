@@ -25,7 +25,9 @@ class DealFlowTests(TestCase):
             ("Rosh HaAyin", "What product"),
             ("Milk 3% 1L", "What is the price"),
             ("4.90", "How many units"),
-            ("2", "Is this deal only for club"),
+            ("2", "What unit is the package"),
+            ("Liter", "How many"),
+            ("1", "Is this deal only for club"),
             ("yes", "Is there a quantity limit"),
             ("3", "Is there a minimum cart"),
         ]
@@ -40,6 +42,7 @@ class DealFlowTests(TestCase):
         self.assertIn("Milk 3% 1L", summary)
         self.assertIn("4.90", summary)
         self.assertIn("2 unit", summary)
+        self.assertIn("Liter", summary)
         self.assertIn("awaiting moderation", summary.lower())
         session = DealReportSession.objects.filter(user=self.user).latest("updated_at")
         self.assertFalse(session.is_active)
@@ -52,6 +55,8 @@ class DealFlowTests(TestCase):
         self.assertTrue(pr.needs_moderation)
         self.assertIn("Limit per shopper", pr.deal_notes)
         self.assertEqual(pr.product_text_raw, "Milk 3% 1L")
+        self.assertEqual(pr.unit_measure_type, "Liter")
+        self.assertEqual(pr.unit_measure_quantity, Decimal("1.00"))
 
     def test_invalid_price_prompts_again(self):
         locale = "en"
@@ -80,7 +85,12 @@ class DealFlowTests(TestCase):
     def test_existing_store_and_product_are_reused(self):
         locale = "en"
         existing_store = Store.objects.create(name="Shufersal Givat Tal", city="Rosh HaAyin")
-        existing_product = Product.objects.create(name_he="Milk 3% 1L", name_en="Milk 3% 1L")
+        existing_product = Product.objects.create(
+            name_he="Milk 3% 1L",
+            name_en="Milk 3% 1L",
+            default_unit_type="Liter",
+            default_unit_quantity=Decimal("1.00"),
+        )
 
         start_add_deal_flow(self.user, locale)
         flow_answers = [
@@ -101,3 +111,5 @@ class DealFlowTests(TestCase):
         report = PriceReport.objects.get()
         self.assertEqual(report.store_id, existing_store.id)
         self.assertEqual(report.product_id, existing_product.id)
+        self.assertEqual(report.unit_measure_type, "Liter")
+        self.assertEqual(report.unit_measure_quantity, Decimal("1.00"))

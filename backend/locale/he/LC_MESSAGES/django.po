@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-10 11:00+0000\n"
+"POT-Creation-Date: 2025-11-11 08:58+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -58,25 +58,6 @@ msgstr ""
 "הדיל ששלחתם עבור %(product)s ב%(store)s במחיר %(price)s₪ אושר! תודה על העזרה "
 "לכולם לחסוך."
 
-#: stores/admin.py:28
-msgid "Geocode selected stores via Geoapify"
-msgstr "קבלו מיקום מהיר בעזרת Geoapify"
-
-#: stores/admin.py:36
-#, python-format
-msgid "Geoapify error for %(store)s: %(error)s"
-msgstr "שגיאת Geoapify עבור %(store)s: %(error)s"
-
-#: stores/admin.py:39
-#, python-format
-msgid "No result found for %(store)s"
-msgstr "לא נמצאה תוצאה עבור %(store)s"
-
-#: stores/admin.py:49
-#, python-format
-msgid "Updated %(count)s store(s) with Geoapify results."
-msgstr "עודכנו %(count)s חנויות בעזרת Geoapify."
-
 #: templates/admin/pricing/pricereport/change_list.html:7
 msgid "Moderation Queue"
 msgstr ""
@@ -119,19 +100,19 @@ msgstr ""
 msgid "Execute"
 msgstr ""
 
-#: whatsapp/deal_flow.py:53
+#: whatsapp/deal_flow.py:55
 msgid "Please send a reply so I can continue."
 msgstr "אנא שלחו תשובה כדי שאוכל להמשיך."
 
-#: whatsapp/deal_flow.py:60
+#: whatsapp/deal_flow.py:62
 msgid "Okay, I canceled that deal. Tap “Add a deal” anytime to start again."
 msgstr "בסדר, ביטלתי את הדיל. לחצו \"הוסף דיל\" בכל רגע כדי להתחיל מחדש."
 
-#: whatsapp/deal_flow.py:67
+#: whatsapp/deal_flow.py:69
 msgid "Thanks! You can start a new deal anytime."
 msgstr "תודה! תוכלו להתחיל דיל חדש בכל רגע."
 
-#: whatsapp/deal_flow.py:89
+#: whatsapp/deal_flow.py:91
 msgid ""
 "Which store or branch is this deal from?\n"
 "Example: “Shufersal Givat Tal”."
@@ -139,134 +120,202 @@ msgstr ""
 "מאיזו חנות או סניף מגיע הדיל?\n"
 "לדוגמה: \"שופרסל גבעת טל\"."
 
-#: whatsapp/deal_flow.py:92
+#: whatsapp/deal_flow.py:94
 msgid "Which city is the store in?"
 msgstr "באיזו עיר נמצא הסניף?"
 
-#: whatsapp/deal_flow.py:95
+#: whatsapp/deal_flow.py:97
 msgid "What product is this? Include brand and size if possible."
 msgstr "מהו המוצר? הוסיפו מותג וגודל אם אפשר."
 
-#: whatsapp/deal_flow.py:98
+#: whatsapp/deal_flow.py:100
 msgid "What is the price? Reply with numbers only (e.g., 4.90)."
 msgstr "מה המחיר? כתבו מספרים בלבד (למשל 4.90)."
 
-#: whatsapp/deal_flow.py:101
+#: whatsapp/deal_flow.py:103
 msgid "How many units does this price cover? Reply with a number (default 1)."
 msgstr "כמה יחידות נכללות במחיר הזה? כתבו מספר (ברירת מחדל 1)."
 
-#: whatsapp/deal_flow.py:104
+#: whatsapp/deal_flow.py:106
+msgid "What unit is the package? (e.g., liter, kilogram, pack)."
+msgstr "מהי יחידת האריזה? (למשל ליטר, קילוגרם, חבילה)."
+
+#: whatsapp/deal_flow.py:109
+#, fuzzy
+#| msgid ""
+#| "How many units does this price cover? Reply with a number (default 1)."
+msgid ""
+"How many of that unit are in the package? Reply with a number (e.g., 1, 1.5, "
+"2)."
+msgstr "כמה יחידות כאלה יש באריזה? כתבו מספר (למשל 1, 1.5, 2)."
+
+#: whatsapp/deal_flow.py:112
 msgid "Is this deal only for club/loyalty members? Reply “yes” or “no”."
 msgstr "האם הדיל תקף רק לחברי מועדון? כתבו \"כן\" או \"לא\"."
 
-#: whatsapp/deal_flow.py:107
+#: whatsapp/deal_flow.py:115
 msgid "Is there a quantity limit per shopper? Reply with a number or “no”."
 msgstr "האם יש הגבלת כמות ללקוח? כתבו מספר או \"לא\"."
 
-#: whatsapp/deal_flow.py:110
+#: whatsapp/deal_flow.py:118
 msgid ""
 "Is there a minimum cart total to unlock this deal? Reply with an amount or "
 "“no”."
 msgstr "האם נדרש סכום סל מינימלי כדי לקבל את הדיל? כתבו סכום או \"לא\"."
 
-#: whatsapp/deal_flow.py:113
+#: whatsapp/deal_flow.py:121 whatsapp/search_flow.py:77
 msgid "Thanks!"
 msgstr "תודה!"
 
-#: whatsapp/deal_flow.py:152
+#: whatsapp/deal_flow.py:163
 msgid "Please send the price as digits, e.g., 4.90"
 msgstr "אנא כתבו את המחיר בספרות, לדוגמה 4.90"
 
-#: whatsapp/deal_flow.py:154
+#: whatsapp/deal_flow.py:165
 msgid "Price must be greater than zero."
 msgstr "המחיר חייב להיות גדול מאפס."
 
-#: whatsapp/deal_flow.py:166
+#: whatsapp/deal_flow.py:177
 msgid "Please reply with a whole number, e.g., 1 or 3."
 msgstr "ענו במספר שלם, למשל 1 או 3."
 
-#: whatsapp/deal_flow.py:169
+#: whatsapp/deal_flow.py:180
 msgid "Number of units must be at least 1."
 msgstr "מספר היחידות חייב להיות 1 ומעלה."
 
-#: whatsapp/deal_flow.py:182
+#: whatsapp/deal_flow.py:210
+msgid "Please specify the unit type (e.g., liter, kilogram, pack)."
+msgstr "אנא ציינו את סוג היחידה (ליטר, קילוגרם, חבילה וכו')."
+
+#: whatsapp/deal_flow.py:227
+#, fuzzy
+#| msgid "Please reply with a whole number, e.g., 1 or 3."
+msgid "Please reply with a numeric quantity (e.g., 1, 1.5, 2)."
+msgstr "ענו במספר (למשל 1, 1.5, 2)."
+
+#: whatsapp/deal_flow.py:229
+#, fuzzy
+#| msgid "Price must be greater than zero."
+msgid "Quantity must be greater than zero."
+msgstr "הכמות חייבת להיות גדולה מאפס."
+
+#: whatsapp/deal_flow.py:242
 msgid "Please reply “yes” or “no”."
 msgstr "ענו \"כן\" או \"לא\"."
 
-#: whatsapp/deal_flow.py:193
+#: whatsapp/deal_flow.py:253
 msgid "Please reply with a number (e.g., 2) or “no”."
 msgstr "ענו במספר (למשל 2) או כתבו \"לא\"."
 
-#: whatsapp/deal_flow.py:196
+#: whatsapp/deal_flow.py:256
 msgid "Limit must be at least 1, or reply “no”."
 msgstr "המגבלה חייבת להיות לפחות 1, או כתבו \"לא\"."
 
-#: whatsapp/deal_flow.py:211
+#: whatsapp/deal_flow.py:271
 msgid "Please send the amount as digits, e.g., 100 or 150.5"
 msgstr "אנא כתבו את הסכום בספרות, למשל 100 או 150.5"
 
-#: whatsapp/deal_flow.py:213
+#: whatsapp/deal_flow.py:273
 msgid "Cart total must be greater than zero, or reply “no”."
 msgstr "סכום הסל חייב להיות גדול מאפס, או כתבו \"לא\"."
 
-#: whatsapp/deal_flow.py:222
+#: whatsapp/deal_flow.py:282
 #, python-format
 msgid "Store: %(value)s"
 msgstr "חנות: %(value)s"
 
-#: whatsapp/deal_flow.py:223
+#: whatsapp/deal_flow.py:283
 #, python-format
 msgid "City: %(value)s"
 msgstr "עיר: %(value)s"
 
-#: whatsapp/deal_flow.py:224
+#: whatsapp/deal_flow.py:284
 #, python-format
 msgid "Product: %(value)s"
 msgstr "מוצר: %(value)s"
 
-#: whatsapp/deal_flow.py:229
+#: whatsapp/deal_flow.py:289
 #, python-format
 msgid "Price: %(price)s (%(units)s unit(s))"
 msgstr "מחיר: %(price)s (%(units)s יחידות)"
 
-#: whatsapp/deal_flow.py:232
+#: whatsapp/deal_flow.py:293
+#, python-format
+msgid "Package size: %(qty)s %(unit)s"
+msgstr "גודל אריזה: %(qty)s %(unit)s"
+
+#: whatsapp/deal_flow.py:296
 msgid "Club members only: yes"
 msgstr "רק לחברי מועדון: כן"
 
-#: whatsapp/deal_flow.py:234
+#: whatsapp/deal_flow.py:298
 msgid "Club members only: no"
 msgstr "רק לחברי מועדון: לא"
 
-#: whatsapp/deal_flow.py:237
+#: whatsapp/deal_flow.py:301
 #, python-format
 msgid "Quantity limit: %(limit)s"
 msgstr "הגבלת כמות: %(limit)s"
 
-#: whatsapp/deal_flow.py:240
+#: whatsapp/deal_flow.py:304
 #, python-format
 msgid "Minimum cart: %(amount)s"
 msgstr "סל מינימלי: %(amount)s"
 
-#: whatsapp/deal_flow.py:243
+#: whatsapp/deal_flow.py:307
+#, fuzzy
+#| msgid ""
+#| "Thanks! We'll review this deal and let everyone know. You can tap “Add a "
+#| "deal” to share another one."
 msgid ""
-"Thanks! We'll review this deal and let everyone know. You can tap “Add a "
-"deal” to share another one."
+"Thanks! We'll review this deal and let everyone know. Tap “Add a deal” to "
+"share another price, or “Find a deal” to see recent reports."
 msgstr ""
 "תודה! נעבור על הדיל הזה ונעדכן את כולם. תוכלו ללחוץ \"הוסף דיל\" כדי לשתף "
 "עוד אחד."
 
-#: whatsapp/deal_flow.py:246
+#: whatsapp/deal_flow.py:310
 msgid "Status: awaiting moderation"
 msgstr "סטטוס: ממתין לאישור צוות"
 
-#: whatsapp/deal_flow.py:247
+#: whatsapp/deal_flow.py:311
 msgid "Thank you for helping the community save together!"
-msgstr ""
+msgstr "תודה שאתם עוזרים לכולם לחסוך ביחד!"
 
-#: whatsapp/deal_flow.py:371
+#: whatsapp/deal_flow.py:458
 #, python-format
 msgid "Limit per shopper: %(limit)s"
 msgstr "הגבלה ללקוח: %(limit)s"
+
+#: whatsapp/search_flow.py:72
+msgid "Which product are you looking for?"
+msgstr ""
+
+#: whatsapp/search_flow.py:74
+msgid "Type the city or send your 📍 location so I can find nearby deals."
+msgstr ""
+
+#: whatsapp/search_flow.py:85
+msgid "Please start again and tell me which product you want."
+msgstr ""
+
+#: whatsapp/search_flow.py:90
+#, python-format
+msgid "Sorry, I couldn't find any recent deals for %(product)s."
+msgstr ""
+
+#: whatsapp/search_flow.py:91
+msgid "Here are the latest deals:"
+msgstr ""
+
+#: whatsapp/search_flow.py:93
+#, python-format
+msgid "• %(product)s — %(price)s₪ at %(store)s (%(city)s)"
+msgstr ""
+
+#: whatsapp/search_flow.py:100
+msgid "Tip: tap “Add a deal” to share your own find."
+msgstr ""
 
 #: whatsapp/utils.py:80
 msgid ""
@@ -305,8 +354,22 @@ msgstr "הוסף דיל"
 msgid "Find a deal"
 msgstr "מצא דיל"
 
-#: whatsapp/views.py:143
-msgid ""
-"Deal search is coming soon. In the meantime you can type something like "
-"“Find milk 3%”."
-msgstr "חיפוש דילים יגיע בקרוב. בינתיים אפשר לכתוב למשל \"מצא חלב 3%\"."
+#~ msgid "Geocode selected stores via Geoapify"
+#~ msgstr "קבלו מיקום מהיר בעזרת Geoapify"
+
+#, python-format
+#~ msgid "Geoapify error for %(store)s: %(error)s"
+#~ msgstr "שגיאת Geoapify עבור %(store)s: %(error)s"
+
+#, python-format
+#~ msgid "No result found for %(store)s"
+#~ msgstr "לא נמצאה תוצאה עבור %(store)s"
+
+#, python-format
+#~ msgid "Updated %(count)s store(s) with Geoapify results."
+#~ msgstr "עודכנו %(count)s חנויות בעזרת Geoapify."
+
+#~ msgid ""
+#~ "Deal search is coming soon. In the meantime you can type something like "
+#~ "“Find milk 3%”."
+#~ msgstr "חיפוש דילים יגיע בקרוב. בינתיים אפשר לכתוב למשל \"מצא חלב 3%\"."

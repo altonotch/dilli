@@ -26,6 +26,8 @@ class PriceReportAdmin(admin.ModelAdmin):
         "store",
         "price",
         "units_in_price",
+        "unit_measure_type",
+        "unit_measure_quantity",
         "is_for_club_members_only",
         "min_cart_total",
         "needs_moderation",

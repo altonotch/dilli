@@ -12,6 +12,18 @@ class Product(models.Model):
     name_en = models.CharField(max_length=160, blank=True)
     brand = models.CharField(max_length=120, blank=True)
     variant = models.CharField(max_length=160, blank=True)
+    default_unit_type = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="e.g., liter, kilogram, unit",
+    )
+    default_unit_quantity = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="e.g., 1.50 (liters) or 2.00 (kg)",
+    )
     category = models.CharField(max_length=120, blank=True)
     barcode = models.CharField(max_length=32, blank=True, null=True, unique=True)
     is_active = models.BooleanField(default=True)

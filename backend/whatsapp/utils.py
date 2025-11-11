@@ -73,6 +73,20 @@ def get_language_prompt() -> str:
     )
 
 
+ADD_COMMANDS = {"add deal", "add a deal", "הוסף דיל", "הוספת דיל"}
+FIND_COMMANDS = {"find deal", "find a deal", "מצא דיל", "חפש דיל"}
+
+
+def is_add_command(text: str | None) -> bool:
+    t = (text or "").strip().lower()
+    return t in ADD_COMMANDS
+
+
+def is_find_command(text: str | None) -> bool:
+    t = (text or "").strip().lower()
+    return t in FIND_COMMANDS
+
+
 def get_intro_message(locale: str) -> str:
     loc = normalize_locale(locale)
     with translation.override(loc):

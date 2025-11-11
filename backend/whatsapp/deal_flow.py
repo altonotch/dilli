@@ -18,6 +18,8 @@ QUESTION_SEQUENCE = [
     DealReportSession.Steps.PRODUCT,
     DealReportSession.Steps.PRICE,
     DealReportSession.Steps.UNITS,
+    DealReportSession.Steps.UNIT_TYPE,
+    DealReportSession.Steps.UNIT_QUANTITY,
     DealReportSession.Steps.CLUB,
     DealReportSession.Steps.LIMIT,
     DealReportSession.Steps.CART,
@@ -100,6 +102,12 @@ def _question_text(step: str, locale: str) -> str:
             DealReportSession.Steps.UNITS: _(
                 "How many units does this price cover? Reply with a number (default 1)."
             ),
+            DealReportSession.Steps.UNIT_TYPE: _(
+                "What unit is the package? (e.g., liter, kilogram, pack)."
+            ),
+            DealReportSession.Steps.UNIT_QUANTITY: _(
+                "How many of that unit are in the package? Reply with a number (e.g., 1, 1.5, 2)."
+            ),
             DealReportSession.Steps.CLUB: _(
                 "Is this deal only for club/loyalty members? Reply “yes” or “no”."
             ),
@@ -113,10 +121,13 @@ def _question_text(step: str, locale: str) -> str:
         return prompts.get(step, _("Thanks!"))
 
 
-def _advance(session: DealReportSession) -> None:
+def _advance(session: DealReportSession, target_step: str | None = None) -> None:
     try:
-        idx = QUESTION_SEQUENCE.index(session.step)
-        session.step = QUESTION_SEQUENCE[idx + 1]
+        if target_step:
+            session.step = target_step
+        else:
+            idx = QUESTION_SEQUENCE.index(session.step)
+            session.step = QUESTION_SEQUENCE[idx + 1]
     except (ValueError, IndexError):
         session.step = DealReportSession.Steps.COMPLETE
         session.is_active = False
@@ -168,7 +179,56 @@ def _handle_units(session: DealReportSession, text: str) -> str | None:
         if units <= 0:
             return _("Number of units must be at least 1.")
     _update_data(session, units_in_price=units)
-    _advance(session)
+    # Decide next step: if we already know unit defaults, skip to club question
+    data = session.data or {}
+    product = _match_product(data.get("product_name", ""))
+    unit_type = data.get("unit_type")
+    unit_quantity = data.get("unit_quantity")
+
+    if not unit_type:
+        if product and product.default_unit_type:
+            _update_data(session, unit_type=product.default_unit_type)
+            unit_type = product.default_unit_type
+        else:
+            _advance(session, DealReportSession.Steps.UNIT_TYPE)
+            return None
+
+    if not unit_quantity:
+        if product and product.default_unit_quantity:
+            _update_data(session, unit_quantity=str(product.default_unit_quantity))
+        else:
+            _advance(session, DealReportSession.Steps.UNIT_QUANTITY)
+            return None
+
+    _advance(session, DealReportSession.Steps.CLUB)
+    return None
+
+
+def _handle_unit_type(session: DealReportSession, text: str) -> str | None:
+    cleaned = text.strip()
+    if not cleaned:
+        return _("Please specify the unit type (e.g., liter, kilogram, pack).")
+    _update_data(session, unit_type=cleaned)
+    data = session.data or {}
+    product = _match_product(data.get("product_name", ""))
+    if product and product.default_unit_quantity:
+        _update_data(session, unit_quantity=str(product.default_unit_quantity))
+        _advance(session, DealReportSession.Steps.CLUB)
+    else:
+        _advance(session, DealReportSession.Steps.UNIT_QUANTITY)
+    return None
+
+
+def _handle_unit_quantity(session: DealReportSession, text: str) -> str | None:
+    cleaned = text.replace(",", ".").strip()
+    try:
+        quantity = Decimal(cleaned)
+    except (InvalidOperation, ValueError):
+        return _("Please reply with a numeric quantity (e.g., 1, 1.5, 2).")
+    if quantity <= 0:
+        return _("Quantity must be greater than zero.")
+    _update_data(session, unit_quantity=str(quantity.quantize(Decimal("0.01"))))
+    _advance(session, DealReportSession.Steps.CLUB)
     return None
 
 
@@ -227,6 +287,10 @@ def _format_summary(data: dict, locale: str) -> str:
         if price:
             units = data.get("units_in_price") or 1
             lines.append(_("Price: %(price)s (%(units)s unit(s))") % {"price": price, "units": units})
+        unit_type = data.get("unit_type")
+        unit_qty = data.get("unit_quantity")
+        if unit_type and unit_qty:
+            lines.append(_("Package size: %(qty)s %(unit)s") % {"qty": unit_qty, "unit": unit_type})
         club = data.get("club_only")
         if club is True:
             lines.append(_("Club members only: yes"))
@@ -241,7 +305,7 @@ def _format_summary(data: dict, locale: str) -> str:
         summary = "\n".join(lines)
         closing = _(
             "Thanks! We'll review this deal and let everyone know. "
-            "You can tap “Add a deal” to share another one."
+            "Tap “Add a deal” to share another price, or “Find a deal” to see recent reports."
         )
         moderation = _("Status: awaiting moderation")
         gratitude = _("Thank you for helping the community save together!")
@@ -254,6 +318,8 @@ _STEP_HANDLERS = {
     DealReportSession.Steps.PRODUCT: _handle_product,
     DealReportSession.Steps.PRICE: _handle_price,
     DealReportSession.Steps.UNITS: _handle_units,
+    DealReportSession.Steps.UNIT_TYPE: _handle_unit_type,
+    DealReportSession.Steps.UNIT_QUANTITY: _handle_unit_quantity,
     DealReportSession.Steps.CLUB: _handle_club,
     DealReportSession.Steps.LIMIT: _handle_limit,
     DealReportSession.Steps.CART: _handle_cart,
@@ -288,6 +354,14 @@ def _persist_price_report(session: DealReportSession, user: WAUser) -> Optional[
     limit_qty = data.get("limit_qty")
     deal_notes = _build_deal_notes(limit_qty)
 
+    unit_type = data.get("unit_type")
+    unit_quantity = data.get("unit_quantity")
+    if product:
+        unit_type = unit_type or product.default_unit_type
+        unit_quantity = unit_quantity or (
+            str(product.default_unit_quantity) if product.default_unit_quantity else None
+        )
+
     price_report = PriceReport.objects.create(
         user=user,
         product=product,
@@ -296,6 +370,8 @@ def _persist_price_report(session: DealReportSession, user: WAUser) -> Optional[
         units_in_price=int(data.get("units_in_price") or 1),
         is_for_club_members_only=bool(data.get("club_only")),
         min_cart_total=min_cart_decimal,
+        unit_measure_type=unit_type or "",
+        unit_measure_quantity=Decimal(unit_quantity) if unit_quantity else None,
         deal_notes=deal_notes,
         observed_at=observed_at,
         product_text_raw=data.get("product_name", ""),
@@ -306,6 +382,17 @@ def _persist_price_report(session: DealReportSession, user: WAUser) -> Optional[
     data["price_report_id"] = price_report.id
     session.data = data
     session.save(update_fields=["data"])
+
+    if product:
+        updated = False
+        if unit_type and not product.default_unit_type:
+            product.default_unit_type = unit_type
+            updated = True
+        if unit_quantity and not product.default_unit_quantity:
+            product.default_unit_quantity = Decimal(unit_quantity)
+            updated = True
+        if updated:
+            product.save(update_fields=["default_unit_type", "default_unit_quantity"])
     return price_report
 
 

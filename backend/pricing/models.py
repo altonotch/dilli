@@ -20,6 +20,18 @@ class PriceReport(models.Model):
         default=1,
         help_text="Number of units covered by the reported price (e.g., 3 for a 3-pack deal).",
     )
+    unit_measure_type = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="Unit type (liter, kilogram, piece, etc.).",
+    )
+    unit_measure_quantity = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Quantity per unit (e.g., 1.50 liters, 2.00 kg).",
+    )
     is_for_club_members_only = models.BooleanField(
         default=False,
         help_text="Whether the deal is restricted to loyalty/club members.",

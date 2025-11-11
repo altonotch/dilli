@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+try:
+    import structlog
+except ImportError:  # pragma: no cover - structlog expected in PROD, but guard for dev/CI
+    structlog = None
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -30,11 +34,14 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-(m8)*i*-kc%gc+-%n=0y5348bb
 DEBUG = False
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
+if '979f192c2b35.ngrok-free.app' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('979f192c2b35.ngrok-free.app')
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'django.contrib.gis',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'corsheaders',
     'axes',
     'catalog',
     'stores',
@@ -51,6 +59,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -70,7 +79,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -158,9 +167,6 @@ WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
 META_APP_SECRET = os.getenv('META_APP_SECRET', '')
 WHATSAPP_VERIFY_TOKEN = os.getenv('WHATSAPP_VERIFY_TOKEN', '')
 WA_SALT = os.getenv('WA_SALT', '')
-GEOAPIFY_API_KEY = os.getenv('GEOAPIFY_API_KEY', '')
-
-# Axes configuration
 AXES_DISABLE_ACCESS_LOG = True
 
 # DRF configuration
@@ -174,5 +180,71 @@ REST_FRAMEWORK = {
         'wa_hash': '60/min',     # by WhatsApp identity
     },
 }
+# CORS
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    'https://979f192c2b35.ngrok-free.app',
+]
+ENV = os.getenv('DJANGO_ENV', 'dev')
 
-# Placeholder for environment-specific extensions (e.g., dev/test)
+if structlog:
+    base_processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.add_log_level,
+    ]
+    structlog.configure(
+        processors=base_processors
+        + [
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "structlog": {
+                "()": structlog.stdlib.ProcessorFormatter,
+                "processor": structlog.processors.JSONRenderer()
+                if ENV == "prod"
+                else structlog.dev.ConsoleRenderer(colors=True),
+                "foreign_pre_chain": base_processors,
+            },
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "structlog",
+            },
+        },
+        "loggers": {
+            "": {
+                "handlers": ["console"],
+                "level": os.getenv("LOG_LEVEL", "INFO"),
+            },
+            "whatsapp.views": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        },
+    }
+else:
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+            },
+        },
+        "loggers": {
+            "": {
+                "handlers": ["console"],
+                "level": os.getenv("LOG_LEVEL", "INFO"),
+            },
+        },
+    }

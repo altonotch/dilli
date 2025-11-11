@@ -25,6 +25,8 @@ from .utils import (
     parse_language_choice,
     get_language_prompt,
     normalize_locale,
+    is_add_command,
+    is_find_command,
 )
 from .deal_flow import (
     start_add_deal_flow,
@@ -68,12 +70,16 @@ class MetaWebhookView(APIView):
         return HttpResponse(status=status.HTTP_403_FORBIDDEN)
 
     def post(self, request: HttpRequest) -> JsonResponse:
+        logger.info("Received WhatsApp webhook headers=%s", dict(request.headers))
         if not _verify_signature(request):
+            logger.warning("Invalid signature on webhook")
             return JsonResponse({"detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
             payload = json.loads(request.body.decode("utf-8"))
+            logger.debug("Webhook payload: %s", payload)
         except Exception:
+            logger.exception("Failed to decode webhook JSON")
             return JsonResponse({"detail": "bad json"}, status=status.HTTP_400_BAD_REQUEST)
 
         processed: int = 0
@@ -86,7 +92,9 @@ class MetaWebhookView(APIView):
                 for msg in messages:
                     wa_raw = str(msg.get("from", ""))
                     wa_norm = normalize_wa_id(wa_raw)
+                    logger.info("Processing message: wa_raw=%s message=%s", wa_raw, msg)
                     if not wa_norm:
+                        logger.warning("Unable to normalize WhatsApp id: %s", wa_raw)
                         continue
                     wa_hash = compute_wa_hash(wa_norm)
 
@@ -126,6 +134,13 @@ class MetaWebhookView(APIView):
                     defaults["wa_last4"] = wa_norm[-4:] if len(wa_norm) >= 4 else None
 
                     obj, created = WAUser.objects.get_or_create(wa_id_hash=wa_hash, defaults=defaults)
+                    logger.info(
+                        "Resolved WAUser id=%s created=%s wa_number=%s locale=%s",
+                        obj.pk,
+                        created,
+                        wa_norm,
+                        defaults.get("locale"),
+                    )
                     # Update contact fields on any message
                     WAUser.objects.filter(pk=obj.pk).update(
                         last_seen=timezone.now(),
@@ -137,13 +152,15 @@ class MetaWebhookView(APIView):
                     current_locale = normalize_locale(getattr(obj, 'locale', None) or defaults.get('locale') or 'he')
 
                     try:
-                        if button_reply_id == "add_deal":
+                        if button_reply_id == "add_deal" or is_add_command(body_text):
                             question = start_add_deal_flow(obj, current_locale)
+                            logger.info("Routing to add-deal flow for %s", wa_norm)
                             send_whatsapp_text(wa_norm, question)
                             processed += 1
                             continue
-                        if button_reply_id == "find_deal":
+                        if button_reply_id == "find_deal" or is_find_command(body_text):
                             question = start_find_deal_flow(obj, current_locale)
+                            logger.info("Routing to find-deal flow for %s", wa_norm)
                             send_whatsapp_text(wa_norm, question)
                             processed += 1
                             continue
@@ -170,6 +187,7 @@ class MetaWebhookView(APIView):
 
                         flow_reply = handle_deal_flow_response(obj, current_locale, body_text)
                         if flow_reply:
+                            logger.info("Deal flow response for %s: %s", wa_norm, flow_reply)
                             send_whatsapp_text(wa_norm, flow_reply)
                             processed += 1
                             continue
@@ -177,6 +195,7 @@ class MetaWebhookView(APIView):
                         # Deal lookup flow (text)
                         lookup_reply = handle_find_deal_text(obj, current_locale, body_text)
                         if lookup_reply:
+                            logger.info("Deal lookup response for %s: %s", wa_norm, lookup_reply)
                             send_whatsapp_text(wa_norm, lookup_reply)
                             processed += 1
                             continue
@@ -189,12 +208,20 @@ class MetaWebhookView(APIView):
                                 msg.get("location") or {},
                             )
                             if location_reply:
+                                logger.info("Location-based lookup for %s: %s", wa_norm, location_reply)
                                 send_whatsapp_text(wa_norm, location_reply)
                                 processed += 1
                                 continue
                     except Exception:
                         logger.exception("failed to send onboarding/flow message to %s", wa_norm)
 
+                    intro = get_intro_message(current_locale)
+                    buttons = get_intro_buttons(current_locale)
+                    logger.info("Sending fallback intro/help to %s", wa_norm)
+                    sent = send_whatsapp_buttons(wa_norm, intro, buttons)
+                    if not sent:
+                        send_whatsapp_text(wa_norm, intro)
                     processed += 1
 
+        logger.info("Completed webhook processing processed=%s", processed)
         return JsonResponse({"status": "ok", "processed": processed})
