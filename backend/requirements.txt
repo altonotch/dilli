@@ -6,3 +6,4 @@ python-dotenv==1.0.1
 django-extensions==3.2.3
 psycopg[binary]==3.2.3
 structlog==24.4.0
+langdetect==1.0.9

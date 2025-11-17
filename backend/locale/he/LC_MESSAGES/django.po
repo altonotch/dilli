@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-11 08:58+0000\n"
+"POT-Creation-Date: 2025-11-17 14:51+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,37 +19,37 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=(n == 1 && n % 1 == 0) ? 0 : (n == 2 && n % "
 "1 == 0) ? 1: (n % 10 == 0 && n % 1 == 0 && n > 10) ? 2 : 3;\n"
 
-#: pricing/admin.py:14 templates/admin/pricing/pricereport/change_list.html:49
+#: pricing/admin.py:19 templates/admin/pricing/pricereport/change_list.html:57
 msgid "Rejection reason"
-msgstr ""
+msgstr "סיבת דחייה"
 
-#: pricing/admin.py:15
+#: pricing/admin.py:20
 msgid "Provide a reason when rejecting reports."
-msgstr ""
+msgstr "נא לספק סיבת דחייה בעת דחיית דיווחים."
 
-#: pricing/admin.py:50 templates/admin/pricing/pricereport/change_list.html:45
+#: pricing/admin.py:77 templates/admin/pricing/pricereport/change_list.html:53
 msgid "Approve selected price reports"
-msgstr ""
+msgstr "אשרו את דוחות המחיר שנבחרו"
 
-#: pricing/admin.py:58
+#: pricing/admin.py:85
 #, python-format
 msgid "Marked %(count)s report(s) as approved."
-msgstr ""
+msgstr "סומנו %(count)s דוחות כמאושרים."
 
-#: pricing/admin.py:62 templates/admin/pricing/pricereport/change_list.html:46
+#: pricing/admin.py:89 templates/admin/pricing/pricereport/change_list.html:54
 msgid "Reject selected price reports"
 msgstr "דחו את הדוחות שנבחרו"
 
-#: pricing/admin.py:68
+#: pricing/admin.py:95
 msgid "Please provide a rejection reason in the action form."
 msgstr "אנא ציינו סיבת דחייה בטופס הפעולה."
 
-#: pricing/admin.py:78
+#: pricing/admin.py:105
 #, python-format
 msgid "Rejected %(count)s report(s)."
 msgstr "נדחו %(count)s דוחות."
 
-#: pricing/admin.py:118
+#: pricing/admin.py:145
 #, python-format
 msgid ""
 "Your deal for %(product)s at %(store)s (%(price)s₪) was approved! Thanks for "
@@ -58,77 +58,19 @@ msgstr ""
 "הדיל ששלחתם עבור %(product)s ב%(store)s במחיר %(price)s₪ אושר! תודה על העזרה "
 "לכולם לחסוך."
 
-#: templates/admin/pricing/pricereport/change_list.html:7
-msgid "Moderation Queue"
-msgstr ""
+#: pricing/admin.py:160
+msgid "Price report not found."
+msgstr "לא נמצא דו\"ח מחיר."
 
-#: templates/admin/pricing/pricereport/change_list.html:14
-msgid "Select"
-msgstr ""
+#: pricing/admin.py:175
+#, python-format
+msgid "Saved fixes for report %(id)s."
+msgstr "התיקונים נשמרו עבור דו\"ח %(id)s."
 
-#: templates/admin/pricing/pricereport/change_list.html:15
-msgid "Report"
-msgstr ""
-
-#: templates/admin/pricing/pricereport/change_list.html:16
-msgid "Session data"
-msgstr ""
-
-#: templates/admin/pricing/pricereport/change_list.html:26
-msgid "units"
-msgstr ""
-
-#: templates/admin/pricing/pricereport/change_list.html:27
-#, fuzzy
-#| msgid "Club members only: no"
-msgid "Club members only"
-msgstr "רק לחברי מועדון: לא"
-
-#: templates/admin/pricing/pricereport/change_list.html:28
-msgid "Min cart"
-msgstr ""
-
-#: templates/admin/pricing/pricereport/change_list.html:35
-msgid "No session data"
-msgstr ""
-
-#: templates/admin/pricing/pricereport/change_list.html:43
-msgid "Action"
-msgstr ""
-
-#: templates/admin/pricing/pricereport/change_list.html:50
-msgid "Execute"
-msgstr ""
-
-#: templates/admin/pricing/pricereport/change_list.html:28
-msgid "Tools"
-msgstr "כלים"
-
-#: templates/admin/pricing/pricereport/change_list.html:49
-msgid "Fix data"
-msgstr "תקנו נתונים"
-
-#: templates/admin/pricing/pricereport/change_list.html:50
-msgid "Open report"
-msgstr "פתחו דו\"ח"
-
-#: templates/admin/pricing/pricereport/change_list.html:52
-msgid "Edit store"
-msgstr "ערכו חנות"
-
-#: templates/admin/pricing/pricereport/fix_form.html:6
-msgid ""
-"Use this form to correct typos before approving the report. Changes are "
-"saved immediately."
-msgstr "השתמשו בטופס הזה כדי לתקן שגיאות לפני אישור הדיווח. השינויים נשמרים מיידית."
-
-#: templates/admin/pricing/pricereport/fix_form.html:20
-msgid "Save changes"
-msgstr "שמרו שינויים"
-
-#: templates/admin/pricing/pricereport/fix_form.html:21
-msgid "Cancel"
-msgstr "בטלו"
+#: pricing/admin.py:187
+#, python-format
+msgid "Fix report %(id)s"
+msgstr "תקנו דו\"ח %(id)s"
 
 #: pricing/forms.py:19
 msgid "Reassign store"
@@ -162,109 +104,138 @@ msgstr "סוג יחידה (עברית)"
 msgid "Unit type (English)"
 msgstr "סוג יחידה (אנגלית)"
 
-#: pricing/forms.py:51
+#: pricing/forms.py:50
 msgid "Unit quantity"
 msgstr "כמות ליחידה"
 
-#: pricing/forms.py:58
+#: pricing/forms.py:56
 msgid "Product text (raw)"
 msgstr "תיאור מוצר (גולמי)"
 
-#: pricing/forms.py:59
+#: pricing/forms.py:57
 msgid "Optional override of the free-text product field."
 msgstr "ניתן לעדכן את התיאור החופשי שנשלח על ידי המשתמש."
 
-#: pricing/admin.py:199
-msgid "Price report not found."
-msgstr "לא נמצא דו\"ח מחיר."
+#: templates/admin/pricing/pricereport/change_list.html:7
+msgid "Moderation Queue"
+msgstr "תור בדיקה"
 
-#: pricing/admin.py:215
-#, python-format
-msgid "Saved fixes for report %(id)s."
-msgstr "התיקונים נשמרו עבור דו\"ח %(id)s."
+#: templates/admin/pricing/pricereport/change_list.html:14
+msgid "Select"
+msgstr "בחרו"
 
-#: pricing/admin.py:224
-#, python-format
-msgid "Fix report %(id)s"
-msgstr "תקנו דו\"ח %(id)s"
+#: templates/admin/pricing/pricereport/change_list.html:15
+msgid "Report"
+msgstr "דוח"
 
-#: whatsapp/deal_flow.py:55
+#: templates/admin/pricing/pricereport/change_list.html:16
+msgid "Session data"
+msgstr "נתוני סשן"
+
+#: templates/admin/pricing/pricereport/change_list.html:17
+msgid "Tools"
+msgstr "כלים"
+
+#: templates/admin/pricing/pricereport/change_list.html:27
+msgid "units"
+msgstr "יחידות"
+
+#: templates/admin/pricing/pricereport/change_list.html:28
+#, fuzzy
+#| msgid "Club members only: no"
+msgid "Club members only"
+msgstr "רק לחברי מועדון: לא"
+
+#: templates/admin/pricing/pricereport/change_list.html:29
+msgid "Min cart"
+msgstr "סל מינימלי"
+
+#: templates/admin/pricing/pricereport/change_list.html:36
+msgid "No session data"
+msgstr "אין נתוני סשן"
+
+#: templates/admin/pricing/pricereport/change_list.html:40
+msgid "Fix data"
+msgstr "תקנו נתונים"
+
+#: templates/admin/pricing/pricereport/change_list.html:41
+msgid "Open report"
+msgstr "פתחו דו\"ח"
+
+#: templates/admin/pricing/pricereport/change_list.html:43
+msgid "Edit store"
+msgstr "ערכו חנות"
+
+#: templates/admin/pricing/pricereport/change_list.html:51
+msgid "Action"
+msgstr "פעולה"
+
+#: templates/admin/pricing/pricereport/change_list.html:58
+msgid "Execute"
+msgstr "בצעו"
+
+#: templates/admin/pricing/pricereport/fix_form.html:7
+msgid ""
+"Use this form to correct typos before approving the report. Changes are "
+"saved immediately."
+msgstr ""
+"השתמשו בטופס הזה כדי לתקן שגיאות לפני אישור הדיווח. השינויים נשמרים מיידית."
+
+#: templates/admin/pricing/pricereport/fix_form.html:28
+msgid "Save changes"
+msgstr "שמרו שינויים"
+
+#: templates/admin/pricing/pricereport/fix_form.html:29
+msgid "Cancel"
+msgstr "בטלו"
+
+#: whatsapp/deal_flow.py:144
 msgid "Please send a reply so I can continue."
 msgstr "אנא שלחו תשובה כדי שאוכל להמשיך."
 
-#: whatsapp/deal_flow.py:62
+#: whatsapp/deal_flow.py:151
 msgid "Okay, I canceled that deal. Tap “Add a deal” anytime to start again."
 msgstr "בסדר, ביטלתי את הדיל. לחצו \"הוסף דיל\" בכל רגע כדי להתחיל מחדש."
 
-#: whatsapp/deal_flow.py:69
+#: whatsapp/deal_flow.py:158
 msgid "Thanks! You can start a new deal anytime."
 msgstr "תודה! תוכלו להתחיל דיל חדש בכל רגע."
 
-#: whatsapp/deal_flow.py:91
+#: whatsapp/deal_flow.py:199
 msgid ""
-"Which store or branch is this deal from?\n"
-"Example: “Shufersal Givat Tal”."
+"Which store or chain is this deal from?\n"
+"Example: “Shufersal” or “Rami Levy”."
 msgstr ""
-"מאיזו חנות או סניף מגיע הדיל?\n"
-"לדוגמה: \"שופרסל גבעת טל\"."
+"מאיזו רשת או חנות מגיע הדיל?\n"
+"לדוגמה: \"שופרסל\" או \"רמי לוי\"."
 
-#: whatsapp/deal_flow.py:94
+#: whatsapp/deal_flow.py:202
+msgid ""
+"Which branch or neighborhood is it? Example: “Givat Tal” or “Dizengoff 50”. "
+"Type \"skip\" if you’re not sure."
+msgstr ""
+"מה שם הסניף או השכונה? לדוגמה: \"גבעת טל\" או \"דיזנגוף 50\". כתבו \"דלג\" אם "
+"אינכם בטוחים."
+
+#: whatsapp/deal_flow.py:205
 msgid "Which city is the store in?"
 msgstr "באיזו עיר נמצא הסניף?"
 
-#: whatsapp/deal_flow.py:135
-msgid "Please also write the city name in Hebrew so we can match it with other reports."
-msgstr "אנא כתבו גם את שם העיר בעברית כדי שנוכל להתאים לדיווחים אחרים."
+#: whatsapp/deal_flow.py:208
+msgid "What product is this? (We’ll ask about size in the next questions.)"
+msgstr "מהו המוצר? (נשאל על הגודל בשאלות הבאות.)"
 
-#: whatsapp/deal_flow.py:137
-msgid "Please also write the city name in English so we can match it with other reports."
-msgstr "אנא כתבו גם את שם העיר באנגלית כדי שנוכל להתאים לדיווחים אחרים."
-
-#: whatsapp/deal_flow.py:141
-msgid "Please tell me which branch %(store)s is so I can match the right location."
-msgstr "ספרו לי איזה סניף של %(store)s זה כדי שאוכל לבחור את המיקום הנכון."
-
-#: whatsapp/deal_flow.py:145
-msgid "I found a few stores named %(store)s in %(city)s:"
-msgstr "מצאתי כמה חנויות בשם %(store)s ב%(city)s:"
-
-#: whatsapp/deal_flow.py:151
-msgid "%(index)s) %(label)s — %(detail)s"
-msgstr "%(index)s) %(label)s — %(detail)s"
-
-#: whatsapp/deal_flow.py:154
-msgid "%(index)s) %(label)s"
-msgstr "%(index)s) %(label)s"
-
-#: whatsapp/deal_flow.py:158
-msgid "Reply with the matching number, or type the branch/address if it's not in this list."
-msgstr "ענו עם המספר המתאים, או כתבו את שם/כתובת הסניף אם הוא לא מופיע כאן."
-
-#: whatsapp/deal_flow.py:97
-msgid "What product is this? Include size if possible."
-msgstr "מהו המוצר? הוסיפו את הגודל אם אפשר."
-
-#: whatsapp/deal_flow.py:100
-msgid "Which brand makes this product? Reply with the brand name or type \"skip\" if you're not sure."
+#: whatsapp/deal_flow.py:211
+msgid ""
+"Which brand makes this product? Reply with the brand name or type \"skip\" "
+"if you're not sure."
 msgstr "איזה מותג מייצר את המוצר? כתבו את שם המותג או \"דלג\" אם אינכם בטוחים."
 
-#: whatsapp/deal_flow.py:100
-msgid "What is the price? Reply with numbers only (e.g., 4.90)."
-msgstr "מה המחיר? כתבו מספרים בלבד (למשל 4.90)."
-
-#: whatsapp/deal_flow.py:103
-msgid "How many units does this price cover? Reply with a number (default 1)."
-msgstr "כמה יחידות נכללות במחיר הזה? כתבו מספר (ברירת מחדל 1)."
-
-#: whatsapp/deal_flow.py:106
+#: whatsapp/deal_flow.py:214
 msgid "What unit is the package? (e.g., liter, kilogram, pack)."
 msgstr "מהי יחידת האריזה? (למשל ליטר, קילוגרם, חבילה)."
 
-#: whatsapp/deal_flow.py:108
-msgid "Tap one of the buttons or type another unit."
-msgstr "בחרו באחת מהאפשרויות או כתבו יחידה אחרת."
-
-#: whatsapp/deal_flow.py:109
+#: whatsapp/deal_flow.py:217
 #, fuzzy
 #| msgid ""
 #| "How many units does this price cover? Reply with a number (default 1)."
@@ -273,145 +244,191 @@ msgid ""
 "2)."
 msgstr "כמה יחידות כאלה יש באריזה? כתבו מספר (למשל 1, 1.5, 2)."
 
-#: whatsapp/deal_flow.py:112
+#: whatsapp/deal_flow.py:220
+msgid "What is the price? Reply with numbers only (e.g., 4.90)."
+msgstr "מה המחיר? כתבו מספרים בלבד (למשל 4.90)."
+
+#: whatsapp/deal_flow.py:223
+msgid "How many units does this price cover? Reply with a number (default 1)."
+msgstr "כמה יחידות נכללות במחיר הזה? כתבו מספר (ברירת מחדל 1)."
+
+#: whatsapp/deal_flow.py:226
 msgid "Is this deal only for club/loyalty members? Reply “yes” or “no”."
 msgstr "האם הדיל תקף רק לחברי מועדון? כתבו \"כן\" או \"לא\"."
 
-#: whatsapp/deal_flow.py:115
+#: whatsapp/deal_flow.py:229
 msgid "Is there a quantity limit per shopper? Reply with a number or “no”."
 msgstr "האם יש הגבלת כמות ללקוח? כתבו מספר או \"לא\"."
 
-#: whatsapp/deal_flow.py:118
+#: whatsapp/deal_flow.py:232
 msgid ""
 "Is there a minimum cart total to unlock this deal? Reply with an amount or "
 "“no”."
 msgstr "האם נדרש סכום סל מינימלי כדי לקבל את הדיל? כתבו סכום או \"לא\"."
 
-#: whatsapp/deal_flow.py:121 whatsapp/search_flow.py:77
+#: whatsapp/deal_flow.py:235 whatsapp/search_flow.py:107
 msgid "Thanks!"
 msgstr "תודה!"
 
-#: whatsapp/deal_flow.py:163
-msgid "Please send the price as digits, e.g., 4.90"
-msgstr "אנא כתבו את המחיר בספרות, לדוגמה 4.90"
+#: whatsapp/deal_flow.py:238
+msgid "Tap one of the buttons or type another unit."
+msgstr "בחרו באחת מהאפשרויות או כתבו יחידה אחרת."
 
-#: whatsapp/deal_flow.py:165
-msgid "Price must be greater than zero."
-msgstr "המחיר חייב להיות גדול מאפס."
+#: whatsapp/deal_flow.py:246
+msgid "this store"
+msgstr "החנות הזו"
 
-#: whatsapp/deal_flow.py:177
-msgid "Please reply with a whole number, e.g., 1 or 3."
-msgstr "ענו במספר שלם, למשל 1 או 3."
+#: whatsapp/deal_flow.py:251
+#, python-format
+msgid ""
+"Please tell me which branch %(store)s is so I can match the right location."
+msgstr "ספרו לי איזה סניף של %(store)s זה כדי שאוכל לבחור את המיקום הנכון."
 
-#: whatsapp/deal_flow.py:180
-msgid "Number of units must be at least 1."
-msgstr "מספר היחידות חייב להיות 1 ומעלה."
+#: whatsapp/deal_flow.py:255
+#, python-format
+msgid "I found a few stores named %(store)s in %(city)s:"
+msgstr "מצאתי כמה חנויות בשם %(store)s ב%(city)s:"
 
-#: whatsapp/deal_flow.py:188
+#: whatsapp/deal_flow.py:257
+msgid "this city"
+msgstr "העיר הזו"
+
+#: whatsapp/deal_flow.py:264
+#, python-format
+msgid "%(index)s) %(label)s — %(detail)s"
+msgstr "%(index)s) %(label)s — %(detail)s"
+
+#: whatsapp/deal_flow.py:266
+#, python-format
+msgid "%(index)s) %(label)s"
+msgstr "%(index)s) %(label)s"
+
+#: whatsapp/deal_flow.py:268
+msgid ""
+"Reply with the matching number, or type the branch/address if it's not in "
+"this list."
+msgstr "ענו עם המספר המתאים, או כתבו את שם/כתובת הסניף אם הוא לא מופיע כאן."
+
+#: whatsapp/deal_flow.py:310
 msgid "Please tell me which city this store is in."
 msgstr "ספרו לי באיזו עיר נמצא הסניף."
 
-#: whatsapp/deal_flow.py:203
-msgid "Please type the city name in English."
-msgstr "כתבו את שם העיר באנגלית."
-
-#: whatsapp/deal_flow.py:205
-msgid "Please type the city name in Hebrew."
-msgstr "כתבו את שם העיר בעברית."
-
-#: whatsapp/deal_flow.py:223
-msgid "Please reply with a number between 1 and %(count)s, or type the branch name."
+#: whatsapp/deal_flow.py:401
+#, python-format
+msgid ""
+"Please reply with a number between 1 and %(count)s, or type the branch name."
 msgstr "ענו במספר בין 1 ל-%(count)s, או כתבו את שם הסניף."
 
-#: whatsapp/deal_flow.py:231
-msgid "Please reply with the number from the list or describe the branch/address."
+#: whatsapp/deal_flow.py:412
+msgid ""
+"Please reply with the number from the list or describe the branch/address."
 msgstr "ענו עם המספר מהרשימה או תארו את הסניף/הכתובת."
 
-#: whatsapp/deal_flow.py:210
+#: whatsapp/deal_flow.py:435
+msgid "Please send the price as digits, e.g., 4.90"
+msgstr "אנא כתבו את המחיר בספרות, לדוגמה 4.90"
+
+#: whatsapp/deal_flow.py:437
+msgid "Price must be greater than zero."
+msgstr "המחיר חייב להיות גדול מאפס."
+
+#: whatsapp/deal_flow.py:449
+msgid "Please reply with a whole number, e.g., 1 or 3."
+msgstr "ענו במספר שלם, למשל 1 או 3."
+
+#: whatsapp/deal_flow.py:452
+msgid "Number of units must be at least 1."
+msgstr "מספר היחידות חייב להיות 1 ומעלה."
+
+#: whatsapp/deal_flow.py:461
 msgid "Please specify the unit type (e.g., liter, kilogram, pack)."
 msgstr "אנא ציינו את סוג היחידה (ליטר, קילוגרם, חבילה וכו')."
 
-#: whatsapp/deal_flow.py:227
+#: whatsapp/deal_flow.py:479
 #, fuzzy
 #| msgid "Please reply with a whole number, e.g., 1 or 3."
 msgid "Please reply with a numeric quantity (e.g., 1, 1.5, 2)."
 msgstr "ענו במספר (למשל 1, 1.5, 2)."
 
-#: whatsapp/deal_flow.py:229
+#: whatsapp/deal_flow.py:481
 #, fuzzy
 #| msgid "Price must be greater than zero."
 msgid "Quantity must be greater than zero."
 msgstr "הכמות חייבת להיות גדולה מאפס."
 
-#: whatsapp/deal_flow.py:242
+#: whatsapp/deal_flow.py:494
 msgid "Please reply “yes” or “no”."
 msgstr "ענו \"כן\" או \"לא\"."
 
-#: whatsapp/deal_flow.py:253
+#: whatsapp/deal_flow.py:505
 msgid "Please reply with a number (e.g., 2) or “no”."
 msgstr "ענו במספר (למשל 2) או כתבו \"לא\"."
 
-#: whatsapp/deal_flow.py:256
+#: whatsapp/deal_flow.py:508
 msgid "Limit must be at least 1, or reply “no”."
 msgstr "המגבלה חייבת להיות לפחות 1, או כתבו \"לא\"."
 
-#: whatsapp/deal_flow.py:271
+#: whatsapp/deal_flow.py:523
 msgid "Please send the amount as digits, e.g., 100 or 150.5"
 msgstr "אנא כתבו את הסכום בספרות, למשל 100 או 150.5"
 
-#: whatsapp/deal_flow.py:273
+#: whatsapp/deal_flow.py:525
 msgid "Cart total must be greater than zero, or reply “no”."
 msgstr "סכום הסל חייב להיות גדול מאפס, או כתבו \"לא\"."
 
-#: whatsapp/deal_flow.py:282
+#: whatsapp/deal_flow.py:535
 #, python-format
 msgid "Store: %(value)s"
 msgstr "חנות: %(value)s"
 
-#: whatsapp/deal_flow.py:283
+#: whatsapp/deal_flow.py:536
 #, python-format
 msgid "City: %(value)s"
 msgstr "עיר: %(value)s"
 
-#: whatsapp/deal_flow.py:284
+#: whatsapp/deal_flow.py:537
 #, python-format
 msgid "Product: %(value)s"
 msgstr "מוצר: %(value)s"
 
-#: whatsapp/deal_flow.py:285
+#: whatsapp/deal_flow.py:541
+msgid "Branch or address: %(value)s"
+msgstr "סניף או כתובת: %(value)s"
+
+#: whatsapp/deal_flow.py:544
 #, python-format
 msgid "Brand: %(value)s"
 msgstr "מותג: %(value)s"
 
-#: whatsapp/deal_flow.py:289
+#: whatsapp/deal_flow.py:548
 #, python-format
 msgid "Price: %(price)s (%(units)s unit(s))"
 msgstr "מחיר: %(price)s (%(units)s יחידות)"
 
-#: whatsapp/deal_flow.py:293
+#: whatsapp/deal_flow.py:552
 #, python-format
 msgid "Package size: %(qty)s %(unit)s"
 msgstr "גודל אריזה: %(qty)s %(unit)s"
 
-#: whatsapp/deal_flow.py:296
+#: whatsapp/deal_flow.py:555
 msgid "Club members only: yes"
 msgstr "רק לחברי מועדון: כן"
 
-#: whatsapp/deal_flow.py:298
+#: whatsapp/deal_flow.py:557
 msgid "Club members only: no"
 msgstr "רק לחברי מועדון: לא"
 
-#: whatsapp/deal_flow.py:301
+#: whatsapp/deal_flow.py:560
 #, python-format
 msgid "Quantity limit: %(limit)s"
 msgstr "הגבלת כמות: %(limit)s"
 
-#: whatsapp/deal_flow.py:304
+#: whatsapp/deal_flow.py:563
 #, python-format
 msgid "Minimum cart: %(amount)s"
 msgstr "סל מינימלי: %(amount)s"
 
-#: whatsapp/deal_flow.py:307
+#: whatsapp/deal_flow.py:566
 msgid ""
 "Thanks! We'll review this deal and let everyone know. Tap “Add a deal” to "
 "share another price, or “Find a deal” to see recent reports."
@@ -419,50 +436,74 @@ msgstr ""
 "תודה! נעבור על הדיל הזה ונעדכן את כולם. לחצו \"הוסף דיל\" כדי לשתף מחיר נוסף "
 "או \"מצא דיל\" כדי לראות דיווחים אחרונים."
 
-#: whatsapp/deal_flow.py:310
+#: whatsapp/deal_flow.py:569
 msgid "Status: awaiting moderation"
 msgstr "סטטוס: ממתין לאישור צוות"
 
-#: whatsapp/deal_flow.py:311
+#: whatsapp/deal_flow.py:570
 msgid "Thank you for helping the community save together!"
 msgstr "תודה שאתם עוזרים לכולם לחסוך ביחד!"
 
-#: whatsapp/deal_flow.py:458
+#: whatsapp/deal_flow.py:901
 #, python-format
 msgid "Limit per shopper: %(limit)s"
 msgstr "הגבלה ללקוח: %(limit)s"
 
-#: whatsapp/search_flow.py:72
+#: whatsapp/search_flow.py:89
+#, fuzzy
+#| msgid "Please type the city name in Hebrew."
+msgid "Please type the city name so I can find the right deals."
+msgstr "כתבו את שם העיר בעברית."
+
+#: whatsapp/search_flow.py:99
 msgid "Which product are you looking for?"
-msgstr ""
+msgstr "איזה מוצר אתם מחפשים?"
 
-#: whatsapp/search_flow.py:74
-msgid "Type the city or send your 📍 location so I can find nearby deals."
-msgstr ""
+#: whatsapp/search_flow.py:101
+#, fuzzy
+#| msgid ""
+#| "Which brand makes this product? Reply with the brand name or type "
+#| "\"skip\" if you're not sure."
+msgid ""
+"Which brand do you prefer for this product? Type \"skip\" if you don't mind."
+msgstr "איזה מותג מייצר את המוצר? כתבו את שם המותג או \"דלג\" אם אינכם בטוחים."
 
-#: whatsapp/search_flow.py:85
+#: whatsapp/search_flow.py:104
+#, fuzzy
+#| msgid "Which city is the store in?"
+msgid "Which city should I search in?"
+msgstr "באיזו עיר נמצא הסניף?"
+
+#: whatsapp/search_flow.py:117
 msgid "Please start again and tell me which product you want."
-msgstr ""
+msgstr "נא להתחיל מחדש ולספר איזה מוצר אתם רוצים."
 
-#: whatsapp/search_flow.py:90
-#, python-format
-msgid "Sorry, I couldn't find any recent deals for %(product)s."
-msgstr ""
+#: whatsapp/search_flow.py:120
+msgid "Please start again and tell me which city you want."
+msgstr "נא להתחיל מחדש ולספר באיזו עיר לחפש."
 
-#: whatsapp/search_flow.py:91
+#: whatsapp/search_flow.py:135
+msgid "Sorry, I couldn't find any recent deals for %(product)s in %(city)s."
+msgstr "מצטערים, לא מצאתי דילים עדכניים עבור %(product)s בעיר %(city)s."
+
+#: whatsapp/search_flow.py:138
 msgid "Here are the latest deals:"
-msgstr ""
+msgstr "הנה הדילים האחרונים:"
 
-#: whatsapp/search_flow.py:93
+#: whatsapp/search_flow.py:140
 #, python-format
-msgid "• %(product)s — %(price)s₪ at %(store)s (%(city)s)"
-msgstr ""
+msgid " (%(brand)s)"
+msgstr " (%(brand)s)"
 
-#: whatsapp/search_flow.py:100
+#: whatsapp/search_flow.py:141
+msgid "• %(product)s%(brand)s — %(price)s₪ at %(store)s (%(city)s)"
+msgstr "• %(product)s%(brand)s — %(price)s₪ ב%(store)s (%(city)s)"
+
+#: whatsapp/search_flow.py:149
 msgid "Tip: tap “Add a deal” to share your own find."
-msgstr ""
+msgstr "טיפ: לחצו \"הוסף דיל\" כדי לשתף דיל שאתם מצאתם."
 
-#: whatsapp/utils.py:80
+#: whatsapp/utils.py:94
 msgid ""
 "🛒 Dilli — save together on groceries.\n"
 "Send prices you see in the supermarket and help everyone find cheaper "
@@ -491,10 +532,10 @@ msgstr ""
 "\n"
 "כתבו \"עזרה\" בכל רגע כדי לראות זאת שוב."
 
-#: whatsapp/utils.py:98
+#: whatsapp/utils.py:112
 msgid "Add a deal"
 msgstr "הוסף דיל"
 
-#: whatsapp/utils.py:99
+#: whatsapp/utils.py:113
 msgid "Find a deal"
 msgstr "מצא דיל"

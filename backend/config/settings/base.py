@@ -34,8 +34,6 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-(m8)*i*-kc%gc+-%n=0y5348bb
 DEBUG = False
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
-if '979f192c2b35.ngrok-free.app' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append('979f192c2b35.ngrok-free.app')
 
 
 # Application definition

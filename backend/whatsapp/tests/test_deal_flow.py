@@ -25,7 +25,8 @@ class DealFlowTests(TestCase):
         self.assertIn("which store", self._text(prompt).lower())
 
         flow = [
-            ("Shufersal Givat Tal", "Which city"),
+            ("Shufersal", "Which branch"),
+            ("Givat Tal", "Which city"),
             ("ראש העין", "What product"),
             ("Milk 3% 1L", "Which brand"),
             ("Tnuva", "What unit is the package"),
@@ -43,7 +44,8 @@ class DealFlowTests(TestCase):
 
         summary = handle_deal_flow_response(self.user, locale, "100")
         summary_text = self._text(summary)
-        self.assertIn("Shufersal Givat Tal", summary_text)
+        self.assertIn("Store: Shufersal", summary_text)
+        self.assertIn("Branch or address: Givat Tal", summary_text)
         self.assertIn("Rosh HaAyin", summary_text)
         self.assertIn("ראש העין", summary_text)
         self.assertIn("Milk 3% 1L", summary_text)
@@ -70,7 +72,10 @@ class DealFlowTests(TestCase):
     def test_invalid_price_prompts_again(self):
         locale = "en"
         start_add_deal_flow(self.user, locale)
-        handle_deal_flow_response(self.user, locale, "Store A")
+        branch_prompt = handle_deal_flow_response(self.user, locale, "Store A")
+        self.assertIn("branch", self._text(branch_prompt).lower())
+        city_prompt = handle_deal_flow_response(self.user, locale, "Main Branch")
+        self.assertIn("which city", self._text(city_prompt).lower())
         product_prompt = handle_deal_flow_response(self.user, locale, "City A")
         self.assertIn("what product", self._text(product_prompt).lower())
         brand_prompt = handle_deal_flow_response(self.user, locale, "Product A")
@@ -98,7 +103,12 @@ class DealFlowTests(TestCase):
 
     def test_existing_store_and_product_are_reused(self):
         locale = "en"
-        existing_store = Store.objects.create(name="Shufersal Givat Tal", city="Rosh HaAyin", city_obj=self.city)
+        existing_store = Store.objects.create(
+            name="Shufersal",
+            display_name="Shufersal Givat Tal",
+            city="Rosh HaAyin",
+            city_obj=self.city,
+        )
         existing_product = Product.objects.create(
             name_he="Milk 3% 1L",
             name_en="Milk 3% 1L",
@@ -108,7 +118,8 @@ class DealFlowTests(TestCase):
 
         start_add_deal_flow(self.user, locale)
         flow_answers = [
-            "Shufersal Givat Tal",
+            "Shufersal",
+            "Givat Tal",
             "ראש העין",
             "Milk 3% 1L",
             "skip",
@@ -124,7 +135,9 @@ class DealFlowTests(TestCase):
         for answer in flow_answers:
             summary = handle_deal_flow_response(self.user, locale, answer)
 
-        self.assertIn("Shufersal Givat Tal", self._text(summary))
+        summary_text = self._text(summary)
+        self.assertIn("Store: Shufersal", summary_text)
+        self.assertIn("Branch or address: Givat Tal", summary_text)
         report = PriceReport.objects.get()
         self.assertEqual(report.store_id, existing_store.id)
         self.assertEqual(report.product_id, existing_product.id)
@@ -136,6 +149,7 @@ class DealFlowTests(TestCase):
         tel_aviv = City.objects.create(name_he="תל אביב", name_en="Tel Aviv")
         start_add_deal_flow(self.user, locale)
         handle_deal_flow_response(self.user, locale, "Store Alpha")
+        handle_deal_flow_response(self.user, locale, "skip")
         product_prompt = handle_deal_flow_response(self.user, locale, "תל אביב")
         self.assertIn("what product", self._text(product_prompt).lower())
         session = DealReportSession.objects.filter(user=self.user).latest("updated_at")
@@ -163,6 +177,7 @@ class DealFlowTests(TestCase):
 
         start_add_deal_flow(self.user, locale)
         handle_deal_flow_response(self.user, locale, "Shufersal")
+        handle_deal_flow_response(self.user, locale, "Center")
         choice_prompt = handle_deal_flow_response(self.user, locale, "Tel Aviv")
         choice_text = self._text(choice_prompt)
         self.assertIn("1)", choice_text)
@@ -189,6 +204,7 @@ class DealFlowTests(TestCase):
         )
         start_add_deal_flow(self.user, locale)
         handle_deal_flow_response(self.user, locale, "וויקטורי")
+        handle_deal_flow_response(self.user, locale, "skip")
         handle_deal_flow_response(self.user, locale, "ראש העין")
         handle_deal_flow_response(self.user, locale, "חלב")
         handle_deal_flow_response(self.user, locale, "דלג")
@@ -237,7 +253,8 @@ class DealFlowTests(TestCase):
             default_unit_quantity=Decimal("1.00"),
         )
         start_add_deal_flow(self.user, locale)
-        handle_deal_flow_response(self.user, locale, "Shufersal Givat Tal")
+        handle_deal_flow_response(self.user, locale, "Shufersal")
+        handle_deal_flow_response(self.user, locale, "Givat Tal")
         handle_deal_flow_response(self.user, locale, "ראש העין")
         brand_prompt = handle_deal_flow_response(self.user, locale, "Milk 3% 1L")
         self.assertIn("which brand", self._text(brand_prompt).lower())

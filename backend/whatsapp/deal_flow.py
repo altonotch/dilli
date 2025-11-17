@@ -17,6 +17,7 @@ from .unit_translations import resolve_unit_translation, select_unit_for_locale,
 
 QUESTION_SEQUENCE = [
     DealReportSession.Steps.STORE,
+    DealReportSession.Steps.BRANCH,
     DealReportSession.Steps.CITY,
     DealReportSession.Steps.STORE_CONFIRM,
     DealReportSession.Steps.PRODUCT,
@@ -49,6 +50,24 @@ BRAND_SKIP_KEYWORDS = {
     "דלגו",
     "אין מותג",
     "בלי מותג",
+    "לא יודע",
+    "לא ידוע",
+}
+BRANCH_SKIP_KEYWORDS = {
+    "skip",
+    "n/a",
+    "na",
+    "none",
+    "unknown",
+    "dont know",
+    "don't know",
+    "no branch",
+    "generic",
+    "דלג",
+    "דלגו",
+    "אין",
+    "אין סניף",
+    "בלי סניף",
     "לא יודע",
     "לא ידוע",
 }
@@ -177,13 +196,16 @@ def _question_prompt(session: DealReportSession, locale: str) -> FlowMessage:
 
         prompts = {
             DealReportSession.Steps.STORE: _(
-                "Which store or branch is this deal from?\nExample: “Shufersal Givat Tal”."
+                "Which store or chain is this deal from?\nExample: “Shufersal” or “Rami Levy”."
+            ),
+            DealReportSession.Steps.BRANCH: _(
+                "Which branch or neighborhood is it? Example: “Givat Tal” or “Dizengoff 50”. Type \"skip\" if you’re not sure."
             ),
             DealReportSession.Steps.CITY: _(
                 "Which city is the store in?"
             ),
             DealReportSession.Steps.PRODUCT: _(
-                "What product is this? Include size if possible."
+                "What product is this? (We’ll ask about size in the next questions.)"
             ),
             DealReportSession.Steps.BRAND: _(
                 "Which brand makes this product? Reply with the brand name or type \"skip\" if you're not sure."
@@ -269,6 +291,16 @@ def _update_data(session: DealReportSession, **updates) -> None:
 
 def _handle_store(session: DealReportSession, text: str) -> None:
     _update_data(session, store_name=text, store_id=None, store_detail=None, store_choices=[])
+    _advance(session)
+
+
+def _handle_branch(session: DealReportSession, text: str) -> None:
+    cleaned = text.strip()
+    lower = cleaned.lower()
+    if not cleaned or lower in BRANCH_SKIP_KEYWORDS:
+        _update_data(session, store_detail="")
+    else:
+        _update_data(session, store_detail=cleaned)
     _advance(session)
 
 
@@ -504,6 +536,9 @@ def _format_summary(data: dict, locale: str) -> str:
             _("City: %(value)s") % {"value": city_value},
             _("Product: %(value)s") % {"value": data.get("product_name", "—")},
         ]
+        branch_value = data.get("store_detail")
+        if branch_value:
+            lines.insert(1, _("Branch or address: %(value)s") % {"value": branch_value})
         brand_value = data.get("product_brand")
         if brand_value:
             lines.append(_("Brand: %(value)s") % {"value": brand_value})
@@ -559,6 +594,7 @@ def _format_city_value(data: dict, locale: str) -> str:
 
 _STEP_HANDLERS = {
     DealReportSession.Steps.STORE: _handle_store,
+    DealReportSession.Steps.BRANCH: _handle_branch,
     DealReportSession.Steps.CITY: _handle_city,
     DealReportSession.Steps.STORE_CONFIRM: _handle_store_confirm,
     DealReportSession.Steps.PRODUCT: _handle_product,

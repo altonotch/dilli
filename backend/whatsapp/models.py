@@ -51,6 +51,7 @@ class DealReportSession(models.Model):
 
     class Steps(models.TextChoices):
         STORE = "store", "store"
+        BRANCH = "branch", "branch"
         CITY = "city", "city"
         STORE_CONFIRM = "store_confirm", "store_confirm"
         PRODUCT = "product", "product"

@@ -7,12 +7,16 @@ from urllib import request, error
 from django.conf import settings
 from django.utils import translation
 from django.utils.translation import gettext as _
+from langdetect import DetectorFactory, LangDetectException, detect_langs
 
 
 logger = logging.getLogger(__name__)
 
 _NON_DIGIT = re.compile(r"\D+")
 _HEBREW_CHARS = re.compile(r"[\u0590-\u05FF]")
+LANG_PROB_THRESHOLD = 0.85
+
+DetectorFactory.seed = 0
 
 
 def normalize_wa_id(raw: str) -> str:
@@ -39,11 +43,24 @@ def normalize_locale(locale: str) -> str:
 
 
 def detect_locale(text: str) -> str:
-    """Heuristic: Hebrew characters => 'he', else 'en'."""
-    try:
-        return 'he' if _HEBREW_CHARS.search(text or '') else 'en'
-    except Exception:
-        return 'en'
+    """Detect locale with langdetect; fall back to character heuristic."""
+    sample = (text or "").strip()
+    if sample:
+        try:
+            candidates = detect_langs(sample)
+            if candidates:
+                best = max(candidates, key=lambda c: c.prob)
+                if best.prob >= LANG_PROB_THRESHOLD:
+                    if best.lang.startswith("he"):
+                        return "he"
+                    if best.lang.startswith("en"):
+                        return "en"
+        except LangDetectException:
+            logger.debug("langdetect failed to classify sample", exc_info=True)
+        except Exception:
+            logger.exception("Unexpected error running langdetect")
+
+    return 'he' if _HEBREW_CHARS.search(text or '') else 'en'
 
 
 def parse_language_choice(text: str) -> str | None:
