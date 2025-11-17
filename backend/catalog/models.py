@@ -15,7 +15,17 @@ class Product(models.Model):
     default_unit_type = models.CharField(
         max_length=30,
         blank=True,
-        help_text="e.g., liter, kilogram, unit",
+        help_text="Deprecated: legacy single-language field retained for compatibility.",
+    )
+    default_unit_type_he = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="Hebrew display name for the default unit type.",
+    )
+    default_unit_type_en = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="English display name for the default unit type.",
     )
     default_unit_quantity = models.DecimalField(
         max_digits=6,
@@ -51,6 +61,12 @@ class Product(models.Model):
             self.name_en = self.name_he
         if not self.name_he:
             self.name_he = self.name_en
+        if not self.default_unit_type_en and self.default_unit_type:
+            self.default_unit_type_en = self.default_unit_type
+        if not self.default_unit_type_he and self.default_unit_type:
+            self.default_unit_type_he = self.default_unit_type
+        if not self.default_unit_type and self.default_unit_type_en:
+            self.default_unit_type = self.default_unit_type_en
         super().save(*args, **kwargs)
 
 

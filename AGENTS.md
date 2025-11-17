@@ -10,9 +10,10 @@
 - `python -m venv .venv && source .venv/bin/activate`: create/activate the virtualenv.
 - `pip install -r backend/requirements.txt`: install backend dependencies.
 - `DJANGO_SETTINGS_MODULE=config.settings.dev python manage.py migrate`: apply schema changes to the default (PostGIS-enabled) database.
+- `DJANGO_SETTINGS_MODULE=config.settings.dev python manage.py makemigrations`: generate migrations whenever you introduce model changes.
 - `DJANGO_SETTINGS_MODULE=config.settings.dev python manage.py runserver 0.0.0.0:8000`: run the API locally.
 - `DJANGO_SETTINGS_MODULE=config.settings.test python manage.py test`: execute the Django test suite with the faster test settings.
-- `python manage.py makemessages -l he` / `compilemessages -l he`: maintain the Hebrew locale catalog.
+- `python manage.py makemessages -l he` / `compilemessages -l he`: maintain the Hebrew locale catalog; always regenerate strings after English copy changes and ensure every Hebrew translation entry is filled in before committing.
 
 ## Coding Style & Naming Conventions
 - Python code follows PEP 8 with 4-space indentation; prefer dataclasses for pure data holders (see `osm/repository.py`).

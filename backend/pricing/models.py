@@ -25,6 +25,16 @@ class PriceReport(models.Model):
         blank=True,
         help_text="Unit type (liter, kilogram, piece, etc.).",
     )
+    unit_measure_type_he = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="Unit label for Hebrew experiences.",
+    )
+    unit_measure_type_en = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="Unit label for English experiences.",
+    )
     unit_measure_quantity = models.DecimalField(
         max_digits=6,
         decimal_places=2,

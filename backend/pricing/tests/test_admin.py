@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from unittest import mock
 
+from decimal import Decimal
+
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import TestCase, RequestFactory
+from django.urls import reverse
 
 from catalog.models import Product
-from stores.models import Store
-from whatsapp.models import WAUser
+from stores.models import Store, City
+from whatsapp.models import WAUser, DealReportSession
 from pricing.models import PriceReport, StoreProductSnapshot
 from pricing.admin import PriceReportAdmin
 
@@ -101,3 +104,41 @@ class PriceReportAdminTests(TestCase):
         snapshot.refresh_from_db()
         self.assertEqual(snapshot.confirmation_count, 3)
         mock_send.assert_called_once()
+
+    def test_fix_view_updates_store_city_and_session(self):
+        report = self._create_report()
+        session = DealReportSession.objects.create(
+            user=self.wa_user,
+            data={"price_report_id": str(report.pk), "store_name": "Typo Store"},
+        )
+        self.client.force_login(self.admin_user)
+        new_store = Store.objects.create(name="Correct Store", city="Old City")
+        city = City.objects.create(name_he="ראש העין", name_en="Rosh HaAyin")
+
+        response = self.client.post(
+            reverse("admin:pricing_pricereport_fix", args=[report.pk]),
+            {
+                "store": new_store.pk,
+                "product": self.product.pk,
+                "city": city.pk,
+                "unit_type_en": "Liter",
+                "unit_type_he": "ליטר",
+                "unit_quantity": "2",
+                "product_text_raw": "Milk 3%",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        report.refresh_from_db()
+        new_store.refresh_from_db()
+        session.refresh_from_db()
+
+        self.assertEqual(report.store_id, new_store.id)
+        self.assertEqual(new_store.city_obj_id, city.id)
+        self.assertEqual(report.unit_measure_type_en, "Liter")
+        self.assertEqual(report.unit_measure_type_he, "ליטר")
+        self.assertEqual(report.unit_measure_quantity, Decimal("2"))
+        self.assertEqual(report.product_text_raw, "Milk 3%")
+        self.assertEqual(session.data["store_name"], new_store.name)
+        self.assertEqual(session.data["city"], new_store.city)
+        self.assertEqual(session.data["city_id"], str(city.id))

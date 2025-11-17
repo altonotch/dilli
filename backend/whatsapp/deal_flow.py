@@ -3,15 +3,17 @@ from decimal import Decimal, InvalidOperation
 from typing import Optional, Sequence
 import logging
 
+from dataclasses import dataclass
 from django.db.models import Q
 from django.utils import translation, timezone
 from django.utils.translation import gettext as _
 
 from catalog.models import Product
-from stores.models import Store, City
+from stores.models import Store, City, normalize_store_text
 from pricing.models import PriceReport
 
 from .models import DealReportSession, WAUser
+from .unit_translations import resolve_unit_translation, select_unit_for_locale, get_unit_by_slug
 
 QUESTION_SEQUENCE = [
     DealReportSession.Steps.STORE,
@@ -33,6 +35,12 @@ CANCEL_KEYWORDS = {"cancel", "stop", "בטל", "ביטול", "סיים", "סיו
 YES_KEYWORDS = {"yes", "y", "yeah", "כן", "yep", "si"}
 NO_KEYWORDS = {"no", "n", "not", "לא", "nope", "אין"}
 MAX_STORE_CHOICES = 5
+
+
+@dataclass
+class FlowMessage:
+    text: str
+    buttons: Optional[list[dict]] = None
 
 
 def _contains_hebrew(value: str) -> bool:
@@ -75,12 +83,12 @@ def _build_city_filter(values: Sequence[str]) -> Q:
     return condition
 
 
-def start_add_deal_flow(user: WAUser, locale: str) -> str:
+def start_add_deal_flow(user: WAUser, locale: str) -> FlowMessage:
     DealReportSession.objects.filter(user=user, is_active=True).update(
         is_active=False, step=DealReportSession.Steps.CANCELED
     )
     session = DealReportSession.objects.create(user=user)
-    return _question_text(session, locale)
+    return _question_prompt(session, locale)
 
 
 def handle_deal_flow_response(user: WAUser, locale: str, message_text: Optional[str]) -> Optional[str]:
@@ -114,25 +122,39 @@ def handle_deal_flow_response(user: WAUser, locale: str, message_text: Optional[
         next_prompt = handler(session, text)
         if isinstance(next_prompt, str):
             return next_prompt
+        if isinstance(next_prompt, FlowMessage):
+            return next_prompt
 
         # If handler returned None, we already advanced and should ask next question
         if session.step in QUESTION_SEQUENCE:
-            return _question_text(session, locale)
+            return _question_prompt(session, locale)
         else:
             summary = _format_summary(session.data, locale)
             try:
                 _persist_price_report(session, user)
             except Exception:
                 logger.exception("Failed to persist deal session %s", session.pk)
-            return summary
+            return FlowMessage(summary)
 
 
-def _question_text(session: DealReportSession, locale: str) -> str:
+def _unit_type_buttons(locale: str) -> list[dict]:
+    preferred = ["liter", "kilogram", "unit"]
+    buttons = []
+    for slug in preferred:
+        entry = get_unit_by_slug(slug)
+        if not entry:
+            continue
+        title = entry["he"] if locale.startswith("he") else entry["en"]
+        buttons.append({"id": f"unit_type:{slug}", "title": title[:20]})
+    return buttons
+
+
+def _question_prompt(session: DealReportSession, locale: str) -> FlowMessage:
     step = session.step
     data = session.data or {}
     with translation.override(locale):
         if step == DealReportSession.Steps.STORE_CONFIRM:
-            return _format_store_choice_prompt(data)
+            return FlowMessage(_format_store_choice_prompt(data))
 
         prompts = {
             DealReportSession.Steps.STORE: _(
@@ -166,7 +188,13 @@ def _question_text(session: DealReportSession, locale: str) -> str:
                 "Is there a minimum cart total to unlock this deal? Reply with an amount or “no”."
             ),
         }
-        return prompts.get(step, _("Thanks!"))
+        text = prompts.get(step, _("Thanks!"))
+        buttons = None
+        if step == DealReportSession.Steps.UNIT_TYPE:
+            guidance = _("Tap one of the buttons or type another unit.")
+            text = f"{text}\n\n{guidance}"
+            buttons = _unit_type_buttons(locale)
+        return FlowMessage(text=text, buttons=buttons)
 
 
 def _format_store_choice_prompt(data: dict) -> str:
@@ -367,7 +395,14 @@ def _handle_unit_type(session: DealReportSession, text: str) -> str | None:
     cleaned = text.strip()
     if not cleaned:
         return _("Please specify the unit type (e.g., liter, kilogram, pack).")
-    _update_data(session, unit_type=cleaned)
+    translation = resolve_unit_translation(cleaned)
+    _update_data(
+        session,
+        unit_type=translation["en"] or cleaned,
+        unit_type_en=translation["en"] or cleaned,
+        unit_type_he=translation["he"] or cleaned,
+        unit_type_slug=translation["slug"],
+    )
     _advance(session, DealReportSession.Steps.UNIT_QUANTITY)
     return None
 
@@ -441,10 +476,10 @@ def _format_summary(data: dict, locale: str) -> str:
         if price:
             units = data.get("units_in_price") or 1
             lines.append(_("Price: %(price)s (%(units)s unit(s))") % {"price": price, "units": units})
-        unit_type = data.get("unit_type")
+        unit_label = select_unit_for_locale(data, locale)
         unit_qty = data.get("unit_quantity")
-        if unit_type and unit_qty:
-            lines.append(_("Package size: %(qty)s %(unit)s") % {"qty": unit_qty, "unit": unit_type})
+        if unit_label and unit_qty:
+            lines.append(_("Package size: %(qty)s %(unit)s") % {"qty": unit_qty, "unit": unit_label})
         club = data.get("club_only")
         if club is True:
             lines.append(_("Club members only: yes"))
@@ -532,8 +567,14 @@ def _persist_price_report(session: DealReportSession, user: WAUser) -> Optional[
 
     unit_type = data.get("unit_type")
     unit_quantity = data.get("unit_quantity")
+    unit_type_he = data.get("unit_type_he") or (unit_type if unit_type and _contains_hebrew(unit_type) else "")
+    unit_type_en = data.get("unit_type_en") or (unit_type if unit_type and not _contains_hebrew(unit_type) else "")
     if product:
-        unit_type = unit_type or product.default_unit_type
+        unit_type = unit_type or product.default_unit_type_en or product.default_unit_type
+        if not unit_type_he:
+            unit_type_he = product.default_unit_type_he or unit_type_he
+        if not unit_type_en:
+            unit_type_en = product.default_unit_type_en or unit_type_en or unit_type
         unit_quantity = unit_quantity or (
             str(product.default_unit_quantity) if product.default_unit_quantity else None
         )
@@ -546,7 +587,9 @@ def _persist_price_report(session: DealReportSession, user: WAUser) -> Optional[
         units_in_price=int(data.get("units_in_price") or 1),
         is_for_club_members_only=bool(data.get("club_only")),
         min_cart_total=min_cart_decimal,
-        unit_measure_type=unit_type or "",
+        unit_measure_type=unit_type_en or unit_type or "",
+        unit_measure_type_he=unit_type_he or unit_type_en or unit_type or "",
+        unit_measure_type_en=unit_type_en or unit_type_he or unit_type or "",
         unit_measure_quantity=Decimal(unit_quantity) if unit_quantity else None,
         deal_notes=deal_notes,
         observed_at=observed_at,
@@ -561,14 +604,22 @@ def _persist_price_report(session: DealReportSession, user: WAUser) -> Optional[
 
     if product:
         updated = False
-        if unit_type and not product.default_unit_type:
-            product.default_unit_type = unit_type
+        fields_to_update = []
+        if unit_type_en and not product.default_unit_type_en:
+            product.default_unit_type_en = unit_type_en
+            product.default_unit_type = unit_type_en
             updated = True
+            fields_to_update.extend(["default_unit_type_en", "default_unit_type"])
+        if unit_type_he and not product.default_unit_type_he:
+            product.default_unit_type_he = unit_type_he
+            updated = True
+            fields_to_update.append("default_unit_type_he")
         if unit_quantity and not product.default_unit_quantity:
             product.default_unit_quantity = Decimal(unit_quantity)
             updated = True
+            fields_to_update.append("default_unit_quantity")
         if updated:
-            product.save(update_fields=["default_unit_type", "default_unit_quantity"])
+            product.save(update_fields=list(set(fields_to_update)))
     return price_report
 
 
@@ -625,7 +676,10 @@ def _match_store(
         qs = qs.filter(city_obj_id=city_id)
     elif city_filter:
         qs = qs.filter(city_filter)
+    normalized_name = normalize_store_text(name)
     base_filter = Q(name__iexact=name) | Q(display_name__iexact=name)
+    if normalized_name:
+        base_filter |= Q(name_search_terms__contains=[normalized_name])
     matches = qs.filter(base_filter)
     if detail:
         detail_filter = (
@@ -657,7 +711,10 @@ def _find_store_candidates(name: str, data: dict) -> list[Store]:
     elif city_values:
         base_qs = base_qs.filter(_build_city_filter(city_values))
 
+    normalized_name = normalize_store_text(name)
     base_filter = Q(name__iexact=name) | Q(display_name__iexact=name)
+    if normalized_name:
+        base_filter |= Q(name_search_terms__contains=[normalized_name])
     exact_qs = base_qs.filter(base_filter)
 
     detail = _normalize_text(data.get("store_detail"))

@@ -16,10 +16,13 @@ class DealFlowTests(TestCase):
         self.user = WAUser.objects.create(wa_id_hash="hash", locale="en")
         self.city = City.objects.create(name_he="ראש העין", name_en="Rosh HaAyin")
 
+    def _text(self, reply):
+        return reply.text if hasattr(reply, "text") else reply
+
     def test_full_flow_collects_all_answers_and_returns_summary(self):
         locale = "en"
         prompt = start_add_deal_flow(self.user, locale)
-        self.assertIn("which store", prompt.lower())
+        self.assertIn("which store", self._text(prompt).lower())
 
         flow = [
             ("Shufersal Givat Tal", "Which city"),
@@ -35,17 +38,18 @@ class DealFlowTests(TestCase):
 
         for answer, expected_prompt in flow:
             response = handle_deal_flow_response(self.user, locale, answer)
-            self.assertIn(expected_prompt.lower(), response.lower())
+            self.assertIn(expected_prompt.lower(), self._text(response).lower())
 
         summary = handle_deal_flow_response(self.user, locale, "100")
-        self.assertIn("Shufersal Givat Tal", summary)
-        self.assertIn("Rosh HaAyin", summary)
-        self.assertIn("ראש העין", summary)
-        self.assertIn("Milk 3% 1L", summary)
-        self.assertIn("4.90", summary)
-        self.assertIn("2 unit", summary)
-        self.assertIn("Liter", summary)
-        self.assertIn("awaiting moderation", summary.lower())
+        summary_text = self._text(summary)
+        self.assertIn("Shufersal Givat Tal", summary_text)
+        self.assertIn("Rosh HaAyin", summary_text)
+        self.assertIn("ראש העין", summary_text)
+        self.assertIn("Milk 3% 1L", summary_text)
+        self.assertIn("4.90", summary_text)
+        self.assertIn("2 unit", summary_text)
+        self.assertIn("Liter", summary_text)
+        self.assertIn("awaiting moderation", summary_text.lower())
         session = DealReportSession.objects.filter(user=self.user).latest("updated_at")
         self.assertFalse(session.is_active)
         self.assertEqual(session.step, DealReportSession.Steps.COMPLETE)
@@ -65,23 +69,23 @@ class DealFlowTests(TestCase):
         start_add_deal_flow(self.user, locale)
         handle_deal_flow_response(self.user, locale, "Store A")
         product_prompt = handle_deal_flow_response(self.user, locale, "City A")
-        self.assertIn("what product", product_prompt.lower())
+        self.assertIn("what product", self._text(product_prompt).lower())
         handle_deal_flow_response(self.user, locale, "Product A")
         handle_deal_flow_response(self.user, locale, "Bottle")
         handle_deal_flow_response(self.user, locale, "1")
 
         error = handle_deal_flow_response(self.user, locale, "abc")
-        self.assertIn("digits", error.lower())
+        self.assertIn("digits", self._text(error).lower())
         self.assertEqual(PriceReport.objects.count(), 0)
 
         next_prompt = handle_deal_flow_response(self.user, locale, "5.10")
-        self.assertIn("how many units", next_prompt.lower())
+        self.assertIn("how many units", self._text(next_prompt).lower())
 
     def test_cancel_flow_marks_session_inactive(self):
         locale = "en"
         start_add_deal_flow(self.user, locale)
         cancel_msg = handle_deal_flow_response(self.user, locale, "cancel")
-        self.assertIn("canceled", cancel_msg.lower())
+        self.assertIn("canceled", self._text(cancel_msg).lower())
         session = DealReportSession.objects.filter(user=self.user).latest("updated_at")
         self.assertFalse(session.is_active)
         self.assertEqual(session.step, DealReportSession.Steps.CANCELED)
@@ -114,7 +118,7 @@ class DealFlowTests(TestCase):
         for answer in flow_answers:
             summary = handle_deal_flow_response(self.user, locale, answer)
 
-        self.assertIn("Shufersal Givat Tal", summary)
+        self.assertIn("Shufersal Givat Tal", self._text(summary))
         report = PriceReport.objects.get()
         self.assertEqual(report.store_id, existing_store.id)
         self.assertEqual(report.product_id, existing_product.id)
@@ -127,7 +131,7 @@ class DealFlowTests(TestCase):
         start_add_deal_flow(self.user, locale)
         handle_deal_flow_response(self.user, locale, "Store Alpha")
         product_prompt = handle_deal_flow_response(self.user, locale, "תל אביב")
-        self.assertIn("what product", product_prompt.lower())
+        self.assertIn("what product", self._text(product_prompt).lower())
         session = DealReportSession.objects.filter(user=self.user).latest("updated_at")
         self.assertEqual(session.data.get("city_he"), "תל אביב")
         self.assertEqual(session.data.get("city_en"), "Tel Aviv")
@@ -154,19 +158,43 @@ class DealFlowTests(TestCase):
         start_add_deal_flow(self.user, locale)
         handle_deal_flow_response(self.user, locale, "Shufersal")
         choice_prompt = handle_deal_flow_response(self.user, locale, "Tel Aviv")
-        self.assertIn("1)", choice_prompt)
-        self.assertIn("2)", choice_prompt)
+        choice_text = self._text(choice_prompt)
+        self.assertIn("1)", choice_text)
+        self.assertIn("2)", choice_text)
         next_prompt = handle_deal_flow_response(self.user, locale, "2")
-        self.assertIn("what product", next_prompt.lower())
+        self.assertIn("what product", self._text(next_prompt).lower())
 
         answers = ["Milk 1L", "Liter", "1", "5.00", "1", "no", "no", "no"]
         summary = None
         for answer in answers:
             summary = handle_deal_flow_response(self.user, locale, answer)
 
-        self.assertIn("Milk 1L", summary)
+        self.assertIn("Milk 1L", self._text(summary))
         report = PriceReport.objects.get()
         self.assertEqual(report.store_id, target.id)
+
+    def test_store_aliases_are_matched(self):
+        locale = "he"
+        store = Store.objects.create(
+            name="ויקטורי",
+            city="ראש העין",
+            city_obj=self.city,
+            name_aliases_he=["וויקטורי"],
+        )
+        start_add_deal_flow(self.user, locale)
+        handle_deal_flow_response(self.user, locale, "וויקטורי")
+        handle_deal_flow_response(self.user, locale, "ראש העין")
+        handle_deal_flow_response(self.user, locale, "חלב")
+        handle_deal_flow_response(self.user, locale, "ליטר")
+        handle_deal_flow_response(self.user, locale, "1")
+        handle_deal_flow_response(self.user, locale, "5.00")
+        handle_deal_flow_response(self.user, locale, "1")
+        handle_deal_flow_response(self.user, locale, "לא")
+        handle_deal_flow_response(self.user, locale, "לא")
+        summary = handle_deal_flow_response(self.user, locale, "לא")
+        self.assertIn("ויקטורי", self._text(summary))
+        report = PriceReport.objects.get()
+        self.assertEqual(report.store_id, store.id)
 
     def test_unit_questions_not_skipped_when_product_has_defaults(self):
         locale = "en"
@@ -180,14 +208,14 @@ class DealFlowTests(TestCase):
         handle_deal_flow_response(self.user, locale, "Shufersal Givat Tal")
         handle_deal_flow_response(self.user, locale, "ראש העין")
         unit_prompt = handle_deal_flow_response(self.user, locale, "Milk 3% 1L")
-        self.assertIn("unit is the package", unit_prompt.lower())
+        self.assertIn("unit is the package", self._text(unit_prompt).lower())
         qty_prompt = handle_deal_flow_response(self.user, locale, "Liter")
-        self.assertIn("how many of that unit", qty_prompt.lower())
+        self.assertIn("how many of that unit", self._text(qty_prompt).lower())
         price_prompt = handle_deal_flow_response(self.user, locale, "1")
-        self.assertIn("what is the price", price_prompt.lower())
+        self.assertIn("what is the price", self._text(price_prompt).lower())
         handle_deal_flow_response(self.user, locale, "4.90")
         handle_deal_flow_response(self.user, locale, "1")
         handle_deal_flow_response(self.user, locale, "no")
         handle_deal_flow_response(self.user, locale, "no")
         summary = handle_deal_flow_response(self.user, locale, "no")
-        self.assertIn("Milk 3% 1L", summary)
+        self.assertIn("Milk 3% 1L", self._text(summary))

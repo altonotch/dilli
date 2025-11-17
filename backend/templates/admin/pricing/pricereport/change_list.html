@@ -14,6 +14,7 @@
               <th>{% trans "Select" %}</th>
               <th>{% trans "Report" %}</th>
               <th>{% trans "Session data" %}</th>
+              <th>{% trans "Tools" %}</th>
             </tr>
           </thead>
           <tbody>
@@ -33,6 +34,13 @@
                   <pre>{{ entry.session_data|pprint }}</pre>
                 {% else %}
                   {% trans "No session data" %}
+                {% endif %}
+              </td>
+              <td>
+                <a class="button" href="{% url 'admin:pricing_pricereport_fix' entry.report.pk %}?next={{ request.get_full_path|urlencode }}">{% trans "Fix data" %}</a><br>
+                <a href="{% url 'admin:pricing_pricereport_change' entry.report.pk %}">{% trans "Open report" %}</a><br>
+                {% if entry.report.store %}
+                  <a href="{% url 'admin:stores_store_change' entry.report.store.pk %}" target="_blank" rel="noopener">{% trans "Edit store" %}</a>
                 {% endif %}
               </td>
             </tr>

@@ -31,6 +31,7 @@ from .utils import (
 from .deal_flow import (
     start_add_deal_flow,
     handle_deal_flow_response,
+    FlowMessage,
 )
 from .search_flow import (
     start_find_deal_flow,
@@ -38,6 +39,7 @@ from .search_flow import (
     handle_find_deal_location,
 )
 from .throttling import IPRateThrottle, WaHashRateThrottle
+from .unit_translations import get_unit_label_for_locale
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +123,13 @@ class MetaWebhookView(APIView):
                             button_reply = interactive.get("button_reply") or {}
                             button_reply_id = button_reply.get("id")
 
+                    if button_reply_id and button_reply_id.startswith("unit_type:"):
+                        unit_slug = button_reply_id.split(":", 1)[1]
+                        unit_value = get_unit_label_for_locale(unit_slug, current_locale)
+                        if unit_value:
+                            body_text = unit_value
+                            button_reply_id = None
+
                     lang_choice = parse_language_choice(body_text)
                     defaults["locale"] = lang_choice or detect_locale(body_text or "")
 
@@ -155,7 +164,7 @@ class MetaWebhookView(APIView):
                         if button_reply_id == "add_deal" or is_add_command(body_text):
                             question = start_add_deal_flow(obj, current_locale)
                             logger.info("Routing to add-deal flow for %s", wa_norm)
-                            send_whatsapp_text(wa_norm, question)
+                            _send_flow_message(wa_norm, question)
                             processed += 1
                             continue
                         if button_reply_id == "find_deal" or is_find_command(body_text):
@@ -168,7 +177,7 @@ class MetaWebhookView(APIView):
                         flow_reply = handle_deal_flow_response(obj, current_locale, body_text)
                         if flow_reply:
                             logger.info("Deal flow response for %s: %s", wa_norm, flow_reply)
-                            send_whatsapp_text(wa_norm, flow_reply)
+                            _send_flow_message(wa_norm, flow_reply)
                             processed += 1
                             continue
 
@@ -225,3 +234,15 @@ class MetaWebhookView(APIView):
 
         logger.info("Completed webhook processing processed=%s", processed)
         return JsonResponse({"status": "ok", "processed": processed})
+def _send_flow_message(recipient: str, payload: FlowMessage | str) -> None:
+    if isinstance(payload, FlowMessage):
+        text = payload.text
+        buttons = payload.buttons or []
+        if buttons:
+            sent = send_whatsapp_buttons(recipient, text, buttons)
+            if not sent:
+                send_whatsapp_text(recipient, text)
+        else:
+            send_whatsapp_text(recipient, text)
+    else:
+        send_whatsapp_text(recipient, payload)

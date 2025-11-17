@@ -2,9 +2,14 @@ from __future__ import annotations
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.helpers import ActionForm
+from django.core.exceptions import PermissionDenied
+from django.urls import path, reverse
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
 from django.utils import timezone, translation
 from django.utils.translation import gettext_lazy as _, gettext
 from .models import PriceReport, StoreProductSnapshot
+from .forms import PriceReportFixForm
 from whatsapp.utils import send_whatsapp_text
 
 
@@ -57,6 +62,17 @@ class PriceReportAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "moderated_at", "moderated_by")
     date_hierarchy = "observed_at"
     actions = ["mark_reports_approved", "mark_reports_rejected"]
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "<path:object_id>/fix/",
+                self.admin_site.admin_view(self.fix_view),
+                name="pricing_pricereport_fix",
+            ),
+        ]
+        return custom + urls
 
     @admin.action(description=_("Approve selected price reports"))
     def mark_reports_approved(self, request, queryset):
@@ -137,6 +153,42 @@ class PriceReportAdmin(admin.ModelAdmin):
         except Exception:
             # Don't let messaging failures break admin actions
             pass
+
+    def fix_view(self, request, object_id, *args, **kwargs):
+        report = self.get_object(request, object_id)
+        if not report:
+            self.message_user(request, _("Price report not found."), level=messages.ERROR)
+            return redirect("admin:pricing_pricereport_changelist")
+
+        if not self.has_change_permission(request, obj=report):
+            raise PermissionDenied
+
+        next_url = request.GET.get("next") or request.POST.get("_next") or request.META.get("HTTP_REFERER") or ""
+        changelist_url = reverse("admin:pricing_pricereport_changelist")
+
+        if request.method == "POST":
+            form = PriceReportFixForm(request.POST, report=report)
+            if form.is_valid():
+                form.apply()
+                self.message_user(
+                    request,
+                    _("Saved fixes for report %(id)s.") % {"id": report.pk},
+                    level=messages.SUCCESS,
+                )
+                return redirect(next_url or changelist_url)
+        else:
+            form = PriceReportFixForm(report=report)
+
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "form": form,
+            "report": report,
+            "title": _("Fix report %(id)s") % {"id": report.pk},
+            "next_url": next_url,
+            "changelist_url": changelist_url,
+        }
+        return TemplateResponse(request, "admin/pricing/pricereport/fix_form.html", context)
 
 
 @admin.register(StoreProductSnapshot)

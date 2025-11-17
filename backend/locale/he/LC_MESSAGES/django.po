@@ -100,6 +100,94 @@ msgstr ""
 msgid "Execute"
 msgstr ""
 
+#: templates/admin/pricing/pricereport/change_list.html:28
+msgid "Tools"
+msgstr "כלים"
+
+#: templates/admin/pricing/pricereport/change_list.html:49
+msgid "Fix data"
+msgstr "תקנו נתונים"
+
+#: templates/admin/pricing/pricereport/change_list.html:50
+msgid "Open report"
+msgstr "פתחו דו\"ח"
+
+#: templates/admin/pricing/pricereport/change_list.html:52
+msgid "Edit store"
+msgstr "ערכו חנות"
+
+#: templates/admin/pricing/pricereport/fix_form.html:6
+msgid ""
+"Use this form to correct typos before approving the report. Changes are "
+"saved immediately."
+msgstr "השתמשו בטופס הזה כדי לתקן שגיאות לפני אישור הדיווח. השינויים נשמרים מיידית."
+
+#: templates/admin/pricing/pricereport/fix_form.html:20
+msgid "Save changes"
+msgstr "שמרו שינויים"
+
+#: templates/admin/pricing/pricereport/fix_form.html:21
+msgid "Cancel"
+msgstr "בטלו"
+
+#: pricing/forms.py:19
+msgid "Reassign store"
+msgstr "שייכו לחנות אחרת"
+
+#: pricing/forms.py:24
+msgid "Reassign product"
+msgstr "שייכו למוצר אחר"
+
+#: pricing/forms.py:29
+msgid "Assign city to store"
+msgstr "קשרו עיר לחנות"
+
+#: pricing/forms.py:30
+msgid "Pick an existing city to attach to the store."
+msgstr "בחרו עיר קיימת אליה ישויך הסניף."
+
+#: pricing/forms.py:34
+msgid "City name (Hebrew)"
+msgstr "שם עיר (עברית)"
+
+#: pricing/forms.py:38
+msgid "City name (English)"
+msgstr "שם עיר (אנגלית)"
+
+#: pricing/forms.py:42
+msgid "Unit type (Hebrew)"
+msgstr "סוג יחידה (עברית)"
+
+#: pricing/forms.py:46
+msgid "Unit type (English)"
+msgstr "סוג יחידה (אנגלית)"
+
+#: pricing/forms.py:51
+msgid "Unit quantity"
+msgstr "כמות ליחידה"
+
+#: pricing/forms.py:58
+msgid "Product text (raw)"
+msgstr "תיאור מוצר (גולמי)"
+
+#: pricing/forms.py:59
+msgid "Optional override of the free-text product field."
+msgstr "ניתן לעדכן את התיאור החופשי שנשלח על ידי המשתמש."
+
+#: pricing/admin.py:199
+msgid "Price report not found."
+msgstr "לא נמצא דו\"ח מחיר."
+
+#: pricing/admin.py:215
+#, python-format
+msgid "Saved fixes for report %(id)s."
+msgstr "התיקונים נשמרו עבור דו\"ח %(id)s."
+
+#: pricing/admin.py:224
+#, python-format
+msgid "Fix report %(id)s"
+msgstr "תקנו דו\"ח %(id)s"
+
 #: whatsapp/deal_flow.py:55
 msgid "Please send a reply so I can continue."
 msgstr "אנא שלחו תשובה כדי שאוכל להמשיך."
@@ -167,6 +255,10 @@ msgstr "כמה יחידות נכללות במחיר הזה? כתבו מספר (�
 #: whatsapp/deal_flow.py:106
 msgid "What unit is the package? (e.g., liter, kilogram, pack)."
 msgstr "מהי יחידת האריזה? (למשל ליטר, קילוגרם, חבילה)."
+
+#: whatsapp/deal_flow.py:108
+msgid "Tap one of the buttons or type another unit."
+msgstr "בחרו באחת מהאפשרויות או כתבו יחידה אחרת."
 
 #: whatsapp/deal_flow.py:109
 #, fuzzy
