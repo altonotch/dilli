@@ -1,4 +1,6 @@
 from __future__ import annotations
+import re
+
 from django.contrib.gis.db import models as gis_models
 from django.db import models
 from django.utils.text import slugify
@@ -13,6 +15,14 @@ def _contains_latin(value: str) -> bool:
         ("a" <= ch <= "z") or ("A" <= ch <= "Z")
         for ch in value or ""
     )
+
+
+def normalize_store_text(value: str | None) -> str:
+    """Normalize store/place names for fuzzy lookups."""
+    text = (value or "").strip().lower()
+    if not text:
+        return ""
+    return re.sub(r"[^0-9a-z\u0590-\u05FF]+", "", text)
 
 
 class City(models.Model):
@@ -95,6 +105,9 @@ class Store(models.Model):
     name_he = models.CharField(max_length=160, blank=True)
     name_en = models.CharField(max_length=160, blank=True)
     display_name = models.CharField(max_length=200, blank=True)
+    name_aliases_he = models.JSONField(default=list, blank=True)
+    name_aliases_en = models.JSONField(default=list, blank=True)
+    name_search_terms = models.JSONField(default=list, blank=True)
 
     address = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=120, blank=True)
@@ -158,4 +171,60 @@ class Store(models.Model):
         if not self.city and (self.city_en or self.city_he):
             self.city = self.city_en or self.city_he
 
+        self.name_aliases_he = _clean_aliases(self.name_aliases_he)
+        self.name_aliases_en = _clean_aliases(self.name_aliases_en)
+        self.name_search_terms = _build_search_terms(
+            [
+                self.name,
+                self.name_he,
+                self.name_en,
+                self.display_name,
+            ]
+            + self.name_aliases_he
+            + self.name_aliases_en
+        )
         super().save(*args, **kwargs)
+
+
+_HEBREW_DOUBLE_MAP = {
+    "וו": "ו",
+    "יי": "י",
+}
+
+
+def _clean_aliases(values):
+    seen = set()
+    cleaned = []
+    for value in values or []:
+        text = (value or "").strip()
+        if not text or text in seen:
+            continue
+        cleaned.append(text)
+        seen.add(text)
+    return cleaned
+
+
+def _build_search_terms(values):
+    seen = set()
+    terms = []
+    for value in values:
+        normalized = normalize_store_text(value)
+        for variant in _expand_normalized_variants(normalized):
+            if not variant or variant in seen:
+                continue
+            terms.append(variant)
+            seen.add(variant)
+    return terms
+
+
+def _expand_normalized_variants(token: str) -> set[str]:
+    if not token:
+        return set()
+    variants = {token}
+    for source, target in _HEBREW_DOUBLE_MAP.items():
+        next_variants = set(variants)
+        for existing in variants:
+            if source in existing:
+                next_variants.add(existing.replace(source, target))
+        variants = next_variants
+    return variants

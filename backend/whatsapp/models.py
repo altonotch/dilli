@@ -54,6 +54,7 @@ class DealReportSession(models.Model):
         CITY = "city", "city"
         STORE_CONFIRM = "store_confirm", "store_confirm"
         PRODUCT = "product", "product"
+        BRAND = "brand", "brand"
         UNIT_TYPE = "unit_type", "unit_type"
         UNIT_QUANTITY = "unit_quantity", "unit_quantity"
         PRICE = "price", "price"
@@ -89,6 +90,7 @@ class DealLookupSession(models.Model):
 
     class Steps(models.TextChoices):
         PRODUCT = "product", "product"
+        BRAND = "brand", "brand"
         LOCATION = "location", "location"
         COMPLETE = "complete", "complete"
         CANCELED = "canceled", "canceled"

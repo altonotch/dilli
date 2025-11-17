@@ -25,9 +25,15 @@
 ## Testing Guidelines
 - Tests live alongside apps (e.g., `whatsapp/tests/`); name files `test_<feature>.py` and classes `Test<Feature>`.
 - Use Django’s `TestCase`/`APITestCase` for DB-backed checks and mock external APIs (WhatsApp, Geoapify).
+- Every change should ship with automated tests that cover the new happy path plus at least one representative failure/edge case so regressions are caught early.
 - Before opening a PR, run `python manage.py test` plus any focused suites you touched.
+- Always run the suite against Postgres (the default test database); do **not** switch settings to SQLite for speed or convenience.
 
 ## Commit & Pull Request Guidelines
 - Use concise, imperative commit messages (e.g., “Add WhatsApp deal flow session model”).
 - Pull requests should describe the change, reference issue numbers when available, list testing steps, and include screenshots or sample payloads for user-facing flows (e.g., new WhatsApp replies).
 - Surface schema or settings changes prominently so reviewers can run migrations/config updates without surprises.
+
+## Backwards Compatibility Expectations
+- Do not introduce backward compatible shims unless explicitly requested; optimize for the current requirements first.
+- When you plan to rewrite or significantly refactor existing functionality, check with stakeholders whether backward compatibility is required before shipping the change.

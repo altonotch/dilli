@@ -7,7 +7,7 @@ from django.test import TestCase
 from catalog.models import Product
 from stores.models import Store, City
 from whatsapp.models import WAUser, DealReportSession
-from whatsapp.deal_flow import start_add_deal_flow, handle_deal_flow_response
+from whatsapp.deal_flow import start_add_deal_flow, handle_deal_flow_response, _find_store_candidates
 from pricing.models import PriceReport
 
 
@@ -27,7 +27,8 @@ class DealFlowTests(TestCase):
         flow = [
             ("Shufersal Givat Tal", "Which city"),
             ("ראש העין", "What product"),
-            ("Milk 3% 1L", "What unit is the package"),
+            ("Milk 3% 1L", "Which brand"),
+            ("Tnuva", "What unit is the package"),
             ("Liter", "How many of that unit"),
             ("1", "What is the price"),
             ("4.90", "How many units"),
@@ -46,6 +47,7 @@ class DealFlowTests(TestCase):
         self.assertIn("Rosh HaAyin", summary_text)
         self.assertIn("ראש העין", summary_text)
         self.assertIn("Milk 3% 1L", summary_text)
+        self.assertIn("Brand: Tnuva", summary_text)
         self.assertIn("4.90", summary_text)
         self.assertIn("2 unit", summary_text)
         self.assertIn("Liter", summary_text)
@@ -61,6 +63,7 @@ class DealFlowTests(TestCase):
         self.assertTrue(pr.needs_moderation)
         self.assertIn("Limit per shopper", pr.deal_notes)
         self.assertEqual(pr.product_text_raw, "Milk 3% 1L")
+        self.assertEqual(pr.product.brand, "Tnuva")
         self.assertEqual(pr.unit_measure_type, "Liter")
         self.assertEqual(pr.unit_measure_quantity, Decimal("1.00"))
 
@@ -70,7 +73,9 @@ class DealFlowTests(TestCase):
         handle_deal_flow_response(self.user, locale, "Store A")
         product_prompt = handle_deal_flow_response(self.user, locale, "City A")
         self.assertIn("what product", self._text(product_prompt).lower())
-        handle_deal_flow_response(self.user, locale, "Product A")
+        brand_prompt = handle_deal_flow_response(self.user, locale, "Product A")
+        self.assertIn("which brand", self._text(brand_prompt).lower())
+        handle_deal_flow_response(self.user, locale, "skip")
         handle_deal_flow_response(self.user, locale, "Bottle")
         handle_deal_flow_response(self.user, locale, "1")
 
@@ -106,6 +111,7 @@ class DealFlowTests(TestCase):
             "Shufersal Givat Tal",
             "ראש העין",
             "Milk 3% 1L",
+            "skip",
             "Liter",
             "1",
             "4.50",
@@ -164,7 +170,7 @@ class DealFlowTests(TestCase):
         next_prompt = handle_deal_flow_response(self.user, locale, "2")
         self.assertIn("what product", self._text(next_prompt).lower())
 
-        answers = ["Milk 1L", "Liter", "1", "5.00", "1", "no", "no", "no"]
+        answers = ["Milk 1L", "skip", "Liter", "1", "5.00", "1", "no", "no", "no"]
         summary = None
         for answer in answers:
             summary = handle_deal_flow_response(self.user, locale, answer)
@@ -185,6 +191,7 @@ class DealFlowTests(TestCase):
         handle_deal_flow_response(self.user, locale, "וויקטורי")
         handle_deal_flow_response(self.user, locale, "ראש העין")
         handle_deal_flow_response(self.user, locale, "חלב")
+        handle_deal_flow_response(self.user, locale, "דלג")
         handle_deal_flow_response(self.user, locale, "ליטר")
         handle_deal_flow_response(self.user, locale, "1")
         handle_deal_flow_response(self.user, locale, "5.00")
@@ -195,6 +202,31 @@ class DealFlowTests(TestCase):
         self.assertIn("ויקטורי", self._text(summary))
         report = PriceReport.objects.get()
         self.assertEqual(report.store_id, store.id)
+
+    def test_hebrew_variants_return_identical_store_candidates(self):
+        Store.objects.create(
+            name="ויקטורי",
+            display_name="ויקטורי ראש העין",
+            city="ראש העין",
+            city_obj=self.city,
+            name_aliases_he=["וויקטורי"],
+        )
+        Store.objects.create(
+            name="ויקטורי הירוקה",
+            display_name="ויקטורי הירוקה",
+            city="ראש העין",
+            city_obj=self.city,
+            name_aliases_he=["וויקטורי הירוקה"],
+        )
+        data = {
+            "city": "ראש העין",
+            "city_he": "ראש העין",
+            "city_id": str(self.city.id),
+        }
+        direct = _find_store_candidates("ויקטורי", data)
+        alias = _find_store_candidates("וויקטורי", data)
+        self.assertEqual([store.id for store in direct], [store.id for store in alias])
+        self.assertGreater(len(direct), 0)
 
     def test_unit_questions_not_skipped_when_product_has_defaults(self):
         locale = "en"
@@ -207,7 +239,9 @@ class DealFlowTests(TestCase):
         start_add_deal_flow(self.user, locale)
         handle_deal_flow_response(self.user, locale, "Shufersal Givat Tal")
         handle_deal_flow_response(self.user, locale, "ראש העין")
-        unit_prompt = handle_deal_flow_response(self.user, locale, "Milk 3% 1L")
+        brand_prompt = handle_deal_flow_response(self.user, locale, "Milk 3% 1L")
+        self.assertIn("which brand", self._text(brand_prompt).lower())
+        unit_prompt = handle_deal_flow_response(self.user, locale, "skip")
         self.assertIn("unit is the package", self._text(unit_prompt).lower())
         qty_prompt = handle_deal_flow_response(self.user, locale, "Liter")
         self.assertIn("how many of that unit", self._text(qty_prompt).lower())

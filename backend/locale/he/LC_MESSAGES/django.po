@@ -241,8 +241,12 @@ msgid "Reply with the matching number, or type the branch/address if it's not in
 msgstr "ענו עם המספר המתאים, או כתבו את שם/כתובת הסניף אם הוא לא מופיע כאן."
 
 #: whatsapp/deal_flow.py:97
-msgid "What product is this? Include brand and size if possible."
-msgstr "מהו המוצר? הוסיפו מותג וגודל אם אפשר."
+msgid "What product is this? Include size if possible."
+msgstr "מהו המוצר? הוסיפו את הגודל אם אפשר."
+
+#: whatsapp/deal_flow.py:100
+msgid "Which brand makes this product? Reply with the brand name or type \"skip\" if you're not sure."
+msgstr "איזה מותג מייצר את המוצר? כתבו את שם המותג או \"דלג\" אם אינכם בטוחים."
 
 #: whatsapp/deal_flow.py:100
 msgid "What is the price? Reply with numbers only (e.g., 4.90)."
@@ -373,6 +377,11 @@ msgstr "עיר: %(value)s"
 #, python-format
 msgid "Product: %(value)s"
 msgstr "מוצר: %(value)s"
+
+#: whatsapp/deal_flow.py:285
+#, python-format
+msgid "Brand: %(value)s"
+msgstr "מותג: %(value)s"
 
 #: whatsapp/deal_flow.py:289
 #, python-format

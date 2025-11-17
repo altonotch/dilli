@@ -20,6 +20,7 @@ QUESTION_SEQUENCE = [
     DealReportSession.Steps.CITY,
     DealReportSession.Steps.STORE_CONFIRM,
     DealReportSession.Steps.PRODUCT,
+    DealReportSession.Steps.BRAND,
     DealReportSession.Steps.UNIT_TYPE,
     DealReportSession.Steps.UNIT_QUANTITY,
     DealReportSession.Steps.PRICE,
@@ -34,7 +35,25 @@ logger = logging.getLogger(__name__)
 CANCEL_KEYWORDS = {"cancel", "stop", "בטל", "ביטול", "סיים", "סיום"}
 YES_KEYWORDS = {"yes", "y", "yeah", "כן", "yep", "si"}
 NO_KEYWORDS = {"no", "n", "not", "לא", "nope", "אין"}
+BRAND_SKIP_KEYWORDS = {
+    "skip",
+    "n/a",
+    "na",
+    "none",
+    "unknown",
+    "dont know",
+    "don't know",
+    "no brand",
+    "generic",
+    "דלג",
+    "דלגו",
+    "אין מותג",
+    "בלי מותג",
+    "לא יודע",
+    "לא ידוע",
+}
 MAX_STORE_CHOICES = 5
+HEBREW_DOUBLE_FORMS = (("וו", "ו"), ("יי", "י"))
 
 
 @dataclass
@@ -164,7 +183,10 @@ def _question_prompt(session: DealReportSession, locale: str) -> FlowMessage:
                 "Which city is the store in?"
             ),
             DealReportSession.Steps.PRODUCT: _(
-                "What product is this? Include brand and size if possible."
+                "What product is this? Include size if possible."
+            ),
+            DealReportSession.Steps.BRAND: _(
+                "Which brand makes this product? Reply with the brand name or type \"skip\" if you're not sure."
             ),
             DealReportSession.Steps.UNIT_TYPE: _(
                 "What unit is the package? (e.g., liter, kilogram, pack)."
@@ -359,7 +381,17 @@ def _handle_store_confirm(session: DealReportSession, text: str) -> Optional[str
 
 
 def _handle_product(session: DealReportSession, text: str) -> None:
-    _update_data(session, product_name=text)
+    _update_data(session, product_name=text, product_brand="")
+    _advance(session)
+
+
+def _handle_brand(session: DealReportSession, text: str) -> None:
+    cleaned = text.strip()
+    lower = cleaned.lower()
+    if not cleaned or lower in BRAND_SKIP_KEYWORDS or lower in NO_KEYWORDS:
+        _update_data(session, product_brand="")
+    else:
+        _update_data(session, product_brand=cleaned)
     _advance(session)
 
 
@@ -472,6 +504,9 @@ def _format_summary(data: dict, locale: str) -> str:
             _("City: %(value)s") % {"value": city_value},
             _("Product: %(value)s") % {"value": data.get("product_name", "—")},
         ]
+        brand_value = data.get("product_brand")
+        if brand_value:
+            lines.append(_("Brand: %(value)s") % {"value": brand_value})
         price = data.get("price")
         if price:
             units = data.get("units_in_price") or 1
@@ -527,6 +562,7 @@ _STEP_HANDLERS = {
     DealReportSession.Steps.CITY: _handle_city,
     DealReportSession.Steps.STORE_CONFIRM: _handle_store_confirm,
     DealReportSession.Steps.PRODUCT: _handle_product,
+    DealReportSession.Steps.BRAND: _handle_brand,
     DealReportSession.Steps.PRICE: _handle_price,
     DealReportSession.Steps.UNITS: _handle_units,
     DealReportSession.Steps.UNIT_TYPE: _handle_unit_type,
@@ -693,8 +729,11 @@ def _match_store(
     store = matches.first()
     if store:
         return store
-    if len(name) >= 3:
-        partial_filter = Q(name__icontains=name[:3]) | Q(display_name__icontains=name[:3])
+    chunks = _chunk_variants(name)
+    if chunks:
+        partial_filter = Q()
+        for chunk in chunks:
+            partial_filter |= Q(name__icontains=chunk) | Q(display_name__icontains=chunk)
         qs_partial = Store.objects.filter(partial_filter)
         if city_filter:
             qs_partial = qs_partial.filter(city_filter)
@@ -736,9 +775,11 @@ def _find_store_candidates(name: str, data: dict) -> list[Store]:
         if len(candidates) >= MAX_STORE_CHOICES:
             return candidates
 
-    chunk = name[:3] if len(name) >= 3 else name
-    if chunk:
-        partial_filter = Q(name__icontains=chunk) | Q(display_name__icontains=chunk)
+    chunks = _chunk_variants(name)
+    if chunks:
+        partial_filter = Q()
+        for chunk in chunks:
+            partial_filter |= Q(name__icontains=chunk) | Q(display_name__icontains=chunk)
         partial_qs = base_qs.filter(partial_filter)
         for store in partial_qs:
             if store.id in added_ids:
@@ -751,6 +792,20 @@ def _find_store_candidates(name: str, data: dict) -> list[Store]:
     return candidates
 
 
+def _chunk_variants(value: str) -> set[str]:
+    if not value:
+        return set()
+    chunk = value[:3] if len(value) >= 3 else value
+    variants = {chunk} if chunk else set()
+    for source, target in HEBREW_DOUBLE_FORMS:
+        next_variants = set(variants)
+        for option in variants:
+            if source in option:
+                next_variants.add(option.replace(source, target))
+        variants = next_variants
+    return {variant for variant in variants if variant}
+
+
 def _match_city(name: Optional[str]) -> Optional[City]:
     value = _normalize_text(name)
     if not value:
@@ -760,26 +815,47 @@ def _match_city(name: Optional[str]) -> Optional[City]:
 
 def _get_or_create_product(data: dict) -> Product:
     name = _normalize_text(data.get("product_name")) or "Unknown product"
-    product = _match_product(name)
+    brand = _normalize_text(data.get("product_brand"))
+    product = _match_product(name, brand)
     if product:
+        if brand and not product.brand:
+            product.brand = brand
+            product.save(update_fields=["brand"])
         return product
     return Product.objects.create(
         name_he=name,
         name_en=name,
-        brand="",
+        brand=brand or "",
         variant="",
     )
 
 
-def _match_product(name: str) -> Product | None:
+def _match_product(name: str, brand: Optional[str] = None) -> Product | None:
+    if brand:
+        product = Product.objects.filter(name_he__iexact=name, brand__iexact=brand).first()
+        if product:
+            return product
+        product = Product.objects.filter(name_en__iexact=name, brand__iexact=brand).first()
+        if product:
+            return product
+
     product = Product.objects.filter(name_he__iexact=name).first()
     if product:
         return product
     product = Product.objects.filter(name_en__iexact=name).first()
     if product:
         return product
-    if len(name) >= 3:
-        return Product.objects.filter(name_he__icontains=name[:3]).first()
+
+    prefix = name[:3]
+    if len(prefix) >= 3:
+        qs = Product.objects.filter(name_he__icontains=prefix)
+        if brand:
+            branded = qs.filter(brand__iexact=brand).first()
+            if branded:
+                return branded
+        product = qs.first()
+        if product:
+            return product
     return None
 
 
