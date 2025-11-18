@@ -1,16 +1,16 @@
 from __future__ import annotations
 import hashlib
 import re
-import logging
 import json
 from urllib import request, error
 from django.conf import settings
 from django.utils import translation
 from django.utils.translation import gettext as _
 from langdetect import DetectorFactory, LangDetectException, detect_langs
+import structlog
 
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 _NON_DIGIT = re.compile(r"\D+")
 _HEBREW_CHARS = re.compile(r"[\u0590-\u05FF]")

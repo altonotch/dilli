@@ -19,7 +19,7 @@
 - Django apps use snake_case module names and PascalCase models/admin classes.
 - Keep settings and secrets in `.env`; never hardcode API tokens.
 - When touching WhatsApp flows, keep strings wrapped in `gettext()` and update `locale/he/LC_MESSAGES/`.
-- Maintain structured logging (use `logger` instances already in modules) whenever you ship new logic so production issues can be diagnosed quickly; avoid removing existing debug logs unless they leak sensitive data.
+- Maintain structured logging (using `structlog`-backed `logger` instances already in modules) whenever you ship new logic so production issues can be diagnosed quickly; avoid removing existing debug logs unless they leak sensitive data.
 
 ## Testing Guidelines
 - Tests live alongside apps (e.g., `whatsapp/tests/`); name files `test_<feature>.py` and classes `Test<Feature>`.

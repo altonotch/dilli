@@ -1,7 +1,7 @@
 from __future__ import annotations
 import hmac
 import json
-import logging
+import structlog
 from hashlib import sha256
 
 from django.conf import settings
@@ -18,6 +18,7 @@ from .utils import (
 )
 from .deal_flow import FlowMessage
 from .throttling import IPRateThrottle, WaHashRateThrottle
+from structlog import contextvars as structlog_contextvars
 from .handlers import (
     HANDLERS,
     fallback_payload,
@@ -26,7 +27,7 @@ from .handlers import (
 )
 
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _verify_signature(request: HttpRequest) -> bool:
@@ -86,6 +87,7 @@ class MetaWebhookView(APIView):
                 messages = value.get("messages", []) or []
                 contacts = {c.get("wa_id"): c for c in value.get("contacts", [])}
                 for msg in messages:
+                    structlog_contextvars.clear_contextvars()
                     wa_raw = str(msg.get("from", ""))
                     wa_norm = normalize_wa_id(wa_raw)
                     logger.info("Processing message: wa_raw=%s message=%s", wa_raw, msg)

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import logging
+import structlog
 from dataclasses import dataclass
 from typing import Callable, Optional, Tuple
 
 from django.utils import timezone
+from structlog import contextvars as structlog_contextvars
 
 from .deal_flow import (
     start_add_deal_flow,
@@ -31,7 +32,7 @@ from .unit_translations import get_unit_label_for_locale
 from .models import WAUser
 
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # Types used by the handler registry
@@ -122,6 +123,8 @@ def _build_user_context(
         except Exception:
             # Do not fail the whole handling if something goes wrong here
             logger.exception("Failed to map unit_type button to text for %s", wa_norm)
+
+    structlog_contextvars.bind_contextvars(user_id=str(obj.pk))
 
     return UserMessageContext(
         user=obj,

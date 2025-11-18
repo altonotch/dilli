@@ -1,7 +1,7 @@
 from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Optional, Sequence
-import logging
+import structlog
 
 from dataclasses import dataclass
 from django.db.models import Q
@@ -31,7 +31,7 @@ QUESTION_SEQUENCE = [
     DealReportSession.Steps.CART,
 ]
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 CANCEL_KEYWORDS = {"cancel", "stop", "בטל", "ביטול", "סיים", "סיום"}
 YES_KEYWORDS = {"yes", "y", "yeah", "כן", "yep", "si"}

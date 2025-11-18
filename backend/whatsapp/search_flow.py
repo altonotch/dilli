@@ -1,12 +1,11 @@
 from __future__ import annotations
-
-import logging
 from dataclasses import dataclass
 from typing import Optional
 
 from django.db.models import Q
 from django.utils import translation
 from django.utils.translation import gettext as _
+import structlog
 
 from pricing.models import PriceReport
 from stores.models import Store
@@ -16,7 +15,7 @@ from .models import DealLookupSession, WAUser
 
 RESULT_LIMIT = 5
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def start_find_deal_flow(user: WAUser, locale: str) -> str:
