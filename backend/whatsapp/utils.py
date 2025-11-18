@@ -13,7 +13,6 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 _NON_DIGIT = re.compile(r"\D+")
-_HEBREW_CHARS = re.compile(r"[\u0590-\u05FF]")
 LANG_PROB_THRESHOLD = 0.85
 
 DetectorFactory.seed = 0
@@ -25,12 +24,12 @@ def normalize_wa_id(raw: str) -> str:
 
 
 def compute_wa_hash(wa_id: str) -> str:
-    wa_salt = getattr(settings, 'WA_SALT', '')
+    wa_salt = getattr(settings, "WA_SALT", "")
     if not wa_salt:
         # Fail closed if salt is not configured
-        raise RuntimeError('WA_SALT is not configured')
+        raise RuntimeError("WA_SALT is not configured")
     h = hashlib.sha256()
-    h.update((wa_id + wa_salt).encode('utf-8'))
+    h.update((wa_id + wa_salt).encode("utf-8"))
     return h.hexdigest()
 
 
@@ -60,7 +59,7 @@ def detect_locale(text: str) -> str:
         except Exception:
             logger.exception("Unexpected error running langdetect")
 
-    return 'he' if _HEBREW_CHARS.search(text or '') else 'en'
+    return "en"
 
 
 def parse_language_choice(text: str) -> str | None:
@@ -83,11 +82,7 @@ def parse_language_choice(text: str) -> str | None:
 
 def get_language_prompt() -> str:
     """Bilingual language selection message shown on first contact."""
-    return (
-        "Please choose your language / נא לבחור שפה\n"
-        "1) עברית\n"
-        "2) English"
-    )
+    return "Please choose your language / נא לבחור שפה\n" "1) עברית\n" "2) English"
 
 
 ADD_COMMANDS = {"add deal", "add a deal", "הוסף דיל", "הוספת דיל"}
@@ -116,7 +111,7 @@ def get_intro_message(locale: str) -> str:
             "You can also:\n"
             "• Send your 📍 location — to improve results\n"
             "• Send 👍 or 👎 on a deal you saw\n\n"
-            "Type \"help\" anytime to see this again."
+            'Type "help" anytime to see this again.'
         )
     return msg1
 
@@ -132,14 +127,14 @@ def get_intro_buttons(locale: str) -> list[dict[str, str]]:
 
 
 def _build_request(payload: dict) -> request.Request | None:
-    token = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', '')
-    phone_id = getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', '')
+    token = getattr(settings, "WHATSAPP_ACCESS_TOKEN", "")
+    phone_id = getattr(settings, "WHATSAPP_PHONE_NUMBER_ID", "")
     if not token or not phone_id:
         logger.warning("WhatsApp credentials not configured; skipping send")
         return None
 
     url = f"https://graph.facebook.com/v20.0/{phone_id}/messages"
-    data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     return request.Request(
         url,
         data=data,
@@ -159,7 +154,7 @@ def _execute_request(req: request.Request | None) -> bool:
         with request.urlopen(req, timeout=10) as resp:
             return 200 <= resp.status < 300
     except error.HTTPError as e:
-        logger.error("WhatsApp send failed: %s %s", e.code, getattr(e, 'reason', ''))
+        logger.error("WhatsApp send failed: %s %s", e.code, getattr(e, "reason", ""))
     except Exception:
         logger.exception("WhatsApp send failed unexpectedly")
     return False
@@ -177,7 +172,9 @@ def send_whatsapp_text(to_e164: str, body: str) -> bool:
     return _execute_request(_build_request(payload))
 
 
-def send_whatsapp_buttons(to_e164: str, body: str, buttons: list[dict[str, str]]) -> bool:
+def send_whatsapp_buttons(
+    to_e164: str, body: str, buttons: list[dict[str, str]]
+) -> bool:
     """Send an interactive message with quick-reply buttons (max 3).
 
     Falls back to text if buttons list is empty.

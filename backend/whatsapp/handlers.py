@@ -44,6 +44,7 @@ HandlerFunc = Callable[["UserMessageContext", dict], Optional[StatePayload]]
 @dataclass
 class UserMessageContext:
     """Aggregates all per-message data needed for routing state machine."""
+
     user: WAUser
     wa_norm: str
     wa_hash: str
@@ -82,20 +83,32 @@ def _build_user_context(
             button_reply = interactive.get("button_reply") or {}
             button_reply_id = button_reply.get("id")
 
-    # Language choice and default locale guess from the raw text
+    # Language choice intent from the raw text (do not apply locale change here)
     lang_choice = parse_language_choice(body_text)
+
+    # Only auto-detect language for non-numeric messages; numbers shouldn't flip locale
+    stripped = (body_text or "").strip()
+    is_numeric_only = bool(stripped) and stripped.isdigit()
+    inferred_locale = detect_locale(body_text) if not is_numeric_only else None
 
     defaults = {
         "consent_ts": timezone.now(),
         "role": WAUser.Roles.USER,
         "wa_number": wa_norm,
         "wa_last4": wa_norm[-4:] if len(wa_norm) >= 4 else "",
-        "locale": lang_choice or detect_locale(body_text or ""),
+        # Do not use lang_choice here; only rely on detection for non-numeric input
+        "locale": inferred_locale or "en",
     }
 
     # Optional display name from contacts
-    contact = contacts.get(wa_norm) or (value.get("contacts", [{}])[0] if value.get("contacts") else {})
-    display_name = (contact.get("profile") or {}).get("name") if isinstance(contact, dict) else None
+    contact = contacts.get(wa_norm) or (
+        value.get("contacts", [{}])[0] if value.get("contacts") else {}
+    )
+    display_name = (
+        (contact.get("profile") or {}).get("name")
+        if isinstance(contact, dict)
+        else None
+    )
     if display_name:
         defaults["display_name"] = display_name[:255]
 
@@ -110,10 +123,18 @@ def _build_user_context(
     )
 
     # Determine the effective locale
-    current_locale = normalize_locale(getattr(obj, "locale", None) or defaults.get("locale") or "he")
+    # If the user already has a stored locale, prefer it; otherwise use non-numeric detection (or default to en)
+    if getattr(obj, "locale", None):
+        current_locale = normalize_locale(obj.locale)
+    else:
+        current_locale = normalize_locale(inferred_locale or "en")
 
     # Post-process unit type buttons into text in the current locale
-    if button_reply_id and isinstance(button_reply_id, str) and button_reply_id.startswith("unit_type:"):
+    if (
+        button_reply_id
+        and isinstance(button_reply_id, str)
+        and button_reply_id.startswith("unit_type:")
+    ):
         try:
             unit_slug = button_reply_id.split(":", 1)[1]
             unit_value = get_unit_label_for_locale(unit_slug, current_locale)
@@ -151,7 +172,9 @@ def _state_start_find(ctx: "UserMessageContext", _msg: dict) -> Optional[StatePa
     return None
 
 
-def _state_deal_flow_cont(ctx: "UserMessageContext", _msg: dict) -> Optional[StatePayload]:
+def _state_deal_flow_cont(
+    ctx: "UserMessageContext", _msg: dict
+) -> Optional[StatePayload]:
     return handle_deal_flow_response(ctx.user, ctx.current_locale, ctx.body_text)
 
 
@@ -177,9 +200,13 @@ def _state_find_text(ctx: "UserMessageContext", _msg: dict) -> Optional[StatePay
     return handle_find_deal_text(ctx.user, ctx.current_locale, ctx.body_text)
 
 
-def _state_find_location(ctx: "UserMessageContext", msg: dict) -> Optional[StatePayload]:
+def _state_find_location(
+    ctx: "UserMessageContext", msg: dict
+) -> Optional[StatePayload]:
     if ctx.message_type == "location":
-        return handle_find_deal_location(ctx.user, ctx.current_locale, msg.get("location") or {})
+        return handle_find_deal_location(
+            ctx.user, ctx.current_locale, msg.get("location") or {}
+        )
     return None
 
 
@@ -194,7 +221,7 @@ def fallback_payload(ctx: "UserMessageContext") -> StatePayload:
 def summarize_payload(payload: StatePayload) -> str:
     try:
         if isinstance(payload, FlowMessage):
-            text = (payload.text or "")
+            text = payload.text or ""
             text_trim = (text[:120] + "…") if len(text) > 120 else text
             btns = payload.buttons or []
             return f"FlowMessage(text='{text_trim}', buttons={len(btns)})"
