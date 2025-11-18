@@ -2,12 +2,11 @@
 
 ## Project Structure & Module Organization
 - `backend/` contains the Django project (`config/`), domain apps (`whatsapp/`, `pricing/`, `stores/`, `catalog/`), and tests under each app’s `tests/` package.
-- `osm/` holds helper scripts (`import_shop_points.sh`, flex styles) for optional OSM imports; they are currently offline and should not block local work.
 - Locale assets live in `backend/locale/`, and environment settings are split across `config/settings/base.py`, `dev.py`, `test.py`, and `prod.py`.
 - Database data for local Postgres runs out of `db/`; keep large artifacts (e.g., `.osm.pbf`) outside the repo when possible.
 
 ## Build, Test, and Development Commands
-- `python -m venv .venv && source .venv/bin/activate`: create/activate the virtualenv.
+- `source backend/.venv/bin/activate`: create/activate the virtualenv.
 - `pip install -r backend/requirements.txt`: install backend dependencies.
 - `DJANGO_SETTINGS_MODULE=config.settings.dev python manage.py migrate`: apply schema changes to the default (PostGIS-enabled) database.
 - `DJANGO_SETTINGS_MODULE=config.settings.dev python manage.py makemigrations`: generate migrations whenever you introduce model changes.
@@ -16,7 +15,7 @@
 - `python manage.py makemessages -l he` / `compilemessages -l he`: maintain the Hebrew locale catalog; always regenerate strings after English copy changes and ensure every Hebrew translation entry is filled in before committing.
 
 ## Coding Style & Naming Conventions
-- Python code follows PEP 8 with 4-space indentation; prefer dataclasses for pure data holders (see `osm/repository.py`).
+- Python code follows PEP 8 with 4-space indentation; prefer dataclasses for pure data holders.
 - Django apps use snake_case module names and PascalCase models/admin classes.
 - Keep settings and secrets in `.env`; never hardcode API tokens.
 - When touching WhatsApp flows, keep strings wrapped in `gettext()` and update `locale/he/LC_MESSAGES/`.
