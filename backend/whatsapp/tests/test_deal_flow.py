@@ -34,8 +34,9 @@ class DealFlowTests(TestCase):
             ("Shufersal", "Which branch"),
             ("Givat Tal", "What product"),
             ("Milk 3% 1L", "Which brand"),
-            ("Tnuva", "What unit is the package"),
-            ("Liter", "How many of that unit"),
+            ("Tnuva", "measured in units or weight"),
+            ("Units", "which unit should i use"),
+            ("Litres", "litres are in the package"),
             ("1", "What is the price"),
             ("4.90", "How many units"),
             ("2", "Is this deal only for club"),
@@ -89,8 +90,12 @@ class DealFlowTests(TestCase):
         self.assertIn("what product", self._text(product_prompt).lower())
         brand_prompt = handle_deal_flow_response(self.user, locale, "Product A")
         self.assertIn("which brand", self._text(brand_prompt).lower())
-        handle_deal_flow_response(self.user, locale, "skip")
-        handle_deal_flow_response(self.user, locale, "Bottle")
+        measurement_prompt = handle_deal_flow_response(self.user, locale, "skip")
+        self.assertIn("units or weight", self._text(measurement_prompt).lower())
+        unit_prompt = handle_deal_flow_response(self.user, locale, "Units")
+        self.assertIn("which unit", self._text(unit_prompt).lower())
+        quantity_prompt = handle_deal_flow_response(self.user, locale, "Grams")
+        self.assertIn("grams", self._text(quantity_prompt).lower())
         handle_deal_flow_response(self.user, locale, "1")
 
         error = handle_deal_flow_response(self.user, locale, "abc")
@@ -132,7 +137,8 @@ class DealFlowTests(TestCase):
             "Givat Tal",
             "Milk 3% 1L",
             "skip",
-            "Liter",
+            "Units",
+            "Litres",
             "1",
             "4.50",
             "1",
@@ -199,7 +205,18 @@ class DealFlowTests(TestCase):
         next_prompt = handle_deal_flow_response(self.user, locale, "2")
         self.assertIn("what product", self._text(next_prompt).lower())
 
-        answers = ["Milk 1L", "skip", "Liter", "1", "5.00", "1", "no", "no", "no"]
+        answers = [
+            "Milk 1L",
+            "skip",
+            "Units",
+            "Litres",
+            "1",
+            "5.00",
+            "1",
+            "no",
+            "no",
+            "no",
+        ]
         summary = None
         for answer in answers:
             summary = handle_deal_flow_response(self.user, locale, answer)
@@ -222,6 +239,7 @@ class DealFlowTests(TestCase):
         handle_deal_flow_response(self.user, locale, "skip")
         handle_deal_flow_response(self.user, locale, "חלב")
         handle_deal_flow_response(self.user, locale, "דלג")
+        handle_deal_flow_response(self.user, locale, "Units")
         handle_deal_flow_response(self.user, locale, "ליטר")
         handle_deal_flow_response(self.user, locale, "1")
         handle_deal_flow_response(self.user, locale, "5.00")
@@ -274,10 +292,12 @@ class DealFlowTests(TestCase):
         handle_deal_flow_response(self.user, locale, "Givat Tal")
         brand_prompt = handle_deal_flow_response(self.user, locale, "Milk 3% 1L")
         self.assertIn("which brand", self._text(brand_prompt).lower())
-        unit_prompt = handle_deal_flow_response(self.user, locale, "skip")
-        self.assertIn("unit is the package", self._text(unit_prompt).lower())
+        measurement_prompt = handle_deal_flow_response(self.user, locale, "skip")
+        self.assertIn("units or weight", self._text(measurement_prompt).lower())
+        unit_prompt = handle_deal_flow_response(self.user, locale, "Units")
+        self.assertIn("which unit", self._text(unit_prompt).lower())
         qty_prompt = handle_deal_flow_response(self.user, locale, "Liter")
-        self.assertIn("how many of that unit", self._text(qty_prompt).lower())
+        self.assertIn("litres", self._text(qty_prompt).lower())
         price_prompt = handle_deal_flow_response(self.user, locale, "1")
         self.assertIn("what is the price", self._text(price_prompt).lower())
         handle_deal_flow_response(self.user, locale, "4.90")
@@ -286,6 +306,20 @@ class DealFlowTests(TestCase):
         handle_deal_flow_response(self.user, locale, "no")
         summary = handle_deal_flow_response(self.user, locale, "no")
         self.assertIn("Milk 3% 1L", self._text(summary))
+
+    def test_weight_category_skips_unit_type(self):
+        locale = "en"
+        start_add_deal_flow(self.user, locale)
+        handle_deal_flow_response(self.user, locale, "ראש העין")
+        handle_deal_flow_response(self.user, locale, "Shufersal")
+        handle_deal_flow_response(self.user, locale, "Givat Tal")
+        handle_deal_flow_response(self.user, locale, "Milk 3% 1L")
+        measurement_prompt = handle_deal_flow_response(self.user, locale, "Brand A")
+        self.assertIn("units or weight", self._text(measurement_prompt).lower())
+        price_prompt = handle_deal_flow_response(self.user, locale, "Weight")
+        self.assertIn("what is the price", self._text(price_prompt).lower())
+        session = DealReportSession.objects.filter(user=self.user).latest("updated_at")
+        self.assertEqual(session.data.get("unit_type_slug"), "kilogram")
 
     def test_city_prompt_offers_default_choice(self):
         locale = "en"

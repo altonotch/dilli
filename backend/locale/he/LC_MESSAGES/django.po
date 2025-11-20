@@ -219,6 +219,22 @@ msgstr "השתמשו בעיר השמורה (%(city)s) או בחרו עיר אח�
 msgid "I found a few cities named “%(name)s”. Please pick one:"
 msgstr "מצאתי כמה ערים בשם \"%(name)s\". נא לבחור אחת:"
 
+#: whatsapp/deal_flow.py:276
+msgid "Is this product measured in units or weight?"
+msgstr "האם המוצר נמדד ביחידות או במשקל?"
+
+#: whatsapp/deal_flow.py:279
+msgid "Units"
+msgstr "יחידות"
+
+#: whatsapp/deal_flow.py:280
+msgid "Weight"
+msgstr "משקל"
+
+#: whatsapp/deal_flow.py:285
+msgid "Which unit should I use? Choose grams, litres, or packages."
+msgstr "איזו יחידה מתאימה? בחרו גרמים, ליטרים או חבילות."
+
 #: whatsapp/deal_flow.py:221
 msgid ""
 "Which store or chain is this deal from?\n"
@@ -248,6 +264,30 @@ msgstr "איזה מותג מייצר את המוצר? כתבו את שם המו�
 #: whatsapp/deal_flow.py:233
 msgid "What unit is the package? (e.g., liter, kilogram, pack)."
 msgstr "מהי יחידת האריזה? (למשל ליטר, קילוגרם, חבילה)."
+
+#: whatsapp/deal_flow.py:306
+msgid "Please choose units or weight."
+msgstr "נא לבחור יחידות או משקל."
+
+#: whatsapp/deal_flow.py:320
+msgid "Please choose grams, litres, or packages."
+msgstr "נא לבחור גרמים, ליטרים או חבילות."
+
+#: whatsapp/deal_flow.py:360
+msgid "How many grams are in the package?"
+msgstr "כמה גרמים יש בחבילה?"
+
+#: whatsapp/deal_flow.py:362
+msgid "How many litres are in the package?"
+msgstr "כמה ליטרים יש בחבילה?"
+
+#: whatsapp/deal_flow.py:364
+msgid "How many units are in the package?"
+msgstr "כמה יחידות יש בחבילה?"
+
+#: whatsapp/deal_flow.py:255
+msgid "Kilogram"
+msgstr "קילוגרם"
 
 #: whatsapp/deal_flow.py:236
 #, fuzzy

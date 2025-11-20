@@ -28,6 +28,7 @@ QUESTION_SEQUENCE = [
     DealReportSession.Steps.STORE_CONFIRM,
     DealReportSession.Steps.PRODUCT,
     DealReportSession.Steps.BRAND,
+    DealReportSession.Steps.UNIT_CATEGORY,
     DealReportSession.Steps.UNIT_TYPE,
     DealReportSession.Steps.UNIT_QUANTITY,
     DealReportSession.Steps.PRICE,
@@ -41,6 +42,17 @@ logger = structlog.get_logger(__name__)
 
 MAX_STORE_CHOICES = 5
 HEBREW_DOUBLE_FORMS = (("וו", "ו"), ("יי", "י"))
+
+UNIT_TYPE_CHOICES = {
+    "grams": {"slug": "gram", "en": "Gram", "he": "גרם"},
+    "litres": {"slug": "liter", "en": "Liter", "he": "ליטר"},
+    "packages": {"slug": "package", "en": "Package", "he": "חבילה"},
+}
+
+UNIT_CATEGORY_BUTTONS = (
+    ("units", "Units"),
+    ("weight", "Weight"),
+)
 
 
 @dataclass
@@ -152,14 +164,19 @@ def handle_deal_flow_response(
 
 
 def _unit_type_buttons(locale: str) -> list[dict]:
-    preferred = ["liter", "kilogram", "unit"]
     buttons = []
-    for slug in preferred:
-        entry = get_unit_by_slug(slug)
-        if not entry:
-            continue
-        title = entry["he"] if locale.startswith("he") else entry["en"]
-        buttons.append({"id": f"unit_type:{slug}", "title": title[:20]})
+    for key, meta in UNIT_TYPE_CHOICES.items():
+        title = meta["he"] if locale.startswith("he") else meta["en"]
+        buttons.append({"id": f"unit_type:{key}", "title": title[:20]})
+    return buttons
+
+
+def _unit_category_buttons(locale: str) -> list[dict]:
+    buttons = []
+    with translation.override(locale):
+        for value, label in UNIT_CATEGORY_BUTTONS:
+            text = _(label)
+            buttons.append({"id": f"unit_category:{value}", "title": text[:20]})
     return buttons
 
 
@@ -206,6 +223,19 @@ def _set_city_data(session: DealReportSession, city: City) -> None:
         city_options=[],
     )
     _assign_user_city(session, city)
+
+
+def _set_weight_defaults(session: DealReportSession) -> None:
+    translation = resolve_unit_translation(_("Kilogram"))
+    _update_data(
+        session,
+        unit_category="weight",
+        unit_type=translation["en"] or "Kilogram",
+        unit_type_en=translation["en"] or "Kilogram",
+        unit_type_he=translation["he"] or _("Kilogram"),
+        unit_type_slug=translation["slug"],
+        unit_quantity="1",
+    )
 
 
 def _create_city_from_name(name: str) -> City:
@@ -262,6 +292,18 @@ def _resolve_city_selection(session: DealReportSession, locale: str) -> Optional
     return FlowMessage(prompt, buttons=buttons)
 
 
+def _unit_quantity_prompt(data: dict, locale: str) -> str:
+    slug = data.get("unit_type_slug")
+    with translation.override(locale):
+        if slug == "gram":
+            return _("How many grams are in the package?")
+        if slug == "liter":
+            return _("How many litres are in the package?")
+        if slug == "package":
+            return _("How many units are in the package?")
+        return _("How many of that unit are in the package? Reply with a number (e.g., 1, 1.5, 2).")
+
+
 def _city_prompt(session: DealReportSession, locale: str) -> FlowMessage:
     city_obj = _get_user_city_object(session.user)
     with translation.override(locale):
@@ -286,6 +328,14 @@ def _question_prompt(session: DealReportSession, locale: str) -> FlowMessage:
             return FlowMessage(_format_store_choice_prompt(data))
         if step == DealReportSession.Steps.CITY:
             return _city_prompt(session, locale)
+        if step == DealReportSession.Steps.UNIT_CATEGORY:
+            question = _("Is this product measured in units or weight?")
+            return FlowMessage(question, buttons=_unit_category_buttons(locale))
+        if step == DealReportSession.Steps.UNIT_TYPE:
+            text = _("Which unit should I use? Choose grams, litres, or packages.")
+            return FlowMessage(text, buttons=_unit_type_buttons(locale))
+        if step == DealReportSession.Steps.UNIT_QUANTITY:
+            return FlowMessage(_unit_quantity_prompt(data, locale))
 
         prompts = {
             DealReportSession.Steps.STORE: _(
@@ -299,12 +349,6 @@ def _question_prompt(session: DealReportSession, locale: str) -> FlowMessage:
             ),
             DealReportSession.Steps.BRAND: _(
                 'Which brand makes this product? Reply with the brand name or type "skip" if you\'re not sure.'
-            ),
-            DealReportSession.Steps.UNIT_TYPE: _(
-                "What unit is the package? (e.g., liter, kilogram, pack)."
-            ),
-            DealReportSession.Steps.UNIT_QUANTITY: _(
-                "How many of that unit are in the package? Reply with a number (e.g., 1, 1.5, 2)."
             ),
             DealReportSession.Steps.PRICE: _(
                 "What is the price? Reply with numbers only (e.g., 4.90)."
@@ -505,22 +549,37 @@ def _handle_store_confirm(
         if 0 <= idx < len(choices):
             selection = choices[idx]
             _update_data(session, store_id=selection.get("id"), store_choices=[])
-            _advance(session, DealReportSession.Steps.PRODUCT)
-            return None
-        return _(
-            "Please reply with a number between 1 and %(count)s, or type the branch name."
-        ) % {"count": len(choices)}
+    _advance(session, DealReportSession.Steps.PRODUCT)
+    return None
 
-    if cleaned:
-        _update_data(session, store_detail=cleaned, store_choices=[])
-        if _maybe_request_store_choice(session):
-            return None
-        _advance(session, DealReportSession.Steps.PRODUCT)
+
+def _handle_unit_category(
+    session: DealReportSession, text: str, text_norm: str
+) -> Optional[str]:
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return _("Please choose units or weight.")
+    locale = translation.get_language() or getattr(session.user, "locale", "he")
+    choice = None
+    if cleaned.startswith("unit_category:"):
+        choice = cleaned.split(":", 1)[1]
+    norm = text_norm
+    lower = cleaned.lower()
+    if not choice:
+        if norm in {"units", "unit"} or lower in {"units", "unit", "יחידה", "יחידות"}:
+            choice = "units"
+        elif norm in {"weight"} or lower in {"weight", "weights", "משקל"}:
+            choice = "weight"
+
+    if choice == "units":
+        _update_data(session, unit_category="units")
+        _advance(session, DealReportSession.Steps.UNIT_TYPE)
         return None
-
-    return _(
-        "Please reply with the number from the list or describe the branch/address."
-    )
+    if choice == "weight":
+        _set_weight_defaults(session)
+        _advance(session, DealReportSession.Steps.PRICE)
+        return None
+    return _("Please choose units or weight.")
 
 
 def _handle_product(session: DealReportSession, text: str, _text_norm: str) -> None:
@@ -569,28 +628,56 @@ def _handle_units(session: DealReportSession, text: str, _text_norm: str) -> str
 def _handle_unit_type(session: DealReportSession, text: str, _text_norm: str) -> str | None:
     cleaned = text.strip()
     if not cleaned:
-        return _("Please specify the unit type (e.g., liter, kilogram, pack).")
-    translation = resolve_unit_translation(cleaned)
+        return _("Please choose grams, litres, or packages.")
+    selection = None
+    if cleaned.startswith("unit_type:"):
+        selection = cleaned.split(":", 1)[1]
+    else:
+        norm = normalize_for_match(cleaned)
+        lower = cleaned.lower()
+        for key, meta in UNIT_TYPE_CHOICES.items():
+            candidates = {
+                normalize_for_match(meta["en"]),
+                meta["en"].lower(),
+                meta["he"],
+                key,
+            }
+            if norm in candidates or lower in candidates:
+                selection = key
+                break
+    if selection not in UNIT_TYPE_CHOICES:
+        return _("Please choose grams, litres, or packages.")
+    meta = UNIT_TYPE_CHOICES[selection]
     _update_data(
         session,
-        unit_type=translation["en"] or cleaned,
-        unit_type_en=translation["en"] or cleaned,
-        unit_type_he=translation["he"] or cleaned,
-        unit_type_slug=translation["slug"],
+        unit_category="units",
+        unit_type=meta["en"],
+        unit_type_en=meta["en"],
+        unit_type_he=meta["he"],
+        unit_type_slug=meta["slug"],
     )
     _advance(session, DealReportSession.Steps.UNIT_QUANTITY)
     return None
 
 
 def _handle_unit_quantity(session: DealReportSession, text: str, _text_norm: str) -> str | None:
+    slug = session.data.get("unit_type_slug")
     cleaned = text.replace(",", ".").strip()
-    try:
-        quantity = Decimal(cleaned)
-    except (InvalidOperation, ValueError):
-        return _("Please reply with a numeric quantity (e.g., 1, 1.5, 2).")
-    if quantity <= 0:
-        return _("Quantity must be greater than zero.")
-    _update_data(session, unit_quantity=str(quantity.quantize(Decimal("0.01"))))
+    if slug == "package":
+        if not cleaned.isdigit():
+            return _("Please reply with a whole number, e.g., 1 or 3.")
+        value = int(cleaned)
+        if value <= 0:
+            return _("Number of units must be at least 1.")
+        _update_data(session, unit_quantity=str(value))
+    else:
+        try:
+            quantity = Decimal(cleaned)
+        except (InvalidOperation, ValueError):
+            return _("Please reply with a numeric quantity (e.g., 1, 1.5, 2).")
+        if quantity <= 0:
+            return _("Quantity must be greater than zero.")
+        _update_data(session, unit_quantity=str(quantity.quantize(Decimal("0.01"))))
     _advance(session, DealReportSession.Steps.PRICE)
     return None
 
@@ -637,13 +724,6 @@ def _handle_cart(session: DealReportSession, text: str, text_norm: str) -> str |
         _update_data(session, min_cart_total=str(value.quantize(Decimal("0.01"))))
     _advance(session)
     return None
-
-
-def _handle_default_city_confirm(session: DealReportSession, text: str) -> str | None:
-    lower = text.strip().lower()
-    data = session.data or {}
-    locale = session.user.locale or "he"
-    city_value = _format_city_value(data, locale)
 
 
 def _format_summary(data: dict, locale: str) -> str:
@@ -717,12 +797,13 @@ def _format_city_value(data: dict, locale: str) -> str:
 
 
 _STEP_HANDLERS = {
+    DealReportSession.Steps.CITY: _handle_city,
     DealReportSession.Steps.STORE: _handle_store,
     DealReportSession.Steps.BRANCH: _handle_branch,
-    DealReportSession.Steps.CITY: _handle_city,
     DealReportSession.Steps.STORE_CONFIRM: _handle_store_confirm,
     DealReportSession.Steps.PRODUCT: _handle_product,
     DealReportSession.Steps.BRAND: _handle_brand,
+    DealReportSession.Steps.UNIT_CATEGORY: _handle_unit_category,
     DealReportSession.Steps.PRICE: _handle_price,
     DealReportSession.Steps.UNITS: _handle_units,
     DealReportSession.Steps.UNIT_TYPE: _handle_unit_type,

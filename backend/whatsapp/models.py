@@ -63,6 +63,7 @@ class DealReportSession(models.Model):
         STORE_CONFIRM = "store_confirm", "store_confirm"
         PRODUCT = "product", "product"
         BRAND = "brand", "brand"
+        UNIT_CATEGORY = "unit_category", "unit_category"
         UNIT_TYPE = "unit_type", "unit_type"
         UNIT_QUANTITY = "unit_quantity", "unit_quantity"
         PRICE = "price", "price"
@@ -74,7 +75,7 @@ class DealReportSession(models.Model):
         CANCELED = "canceled", "canceled"
 
     user = models.ForeignKey(WAUser, on_delete=models.CASCADE, related_name="deal_sessions")
-    step = models.CharField(max_length=20, choices=Steps.choices, default=Steps.STORE)
+    step = models.CharField(max_length=20, choices=Steps.choices, default=Steps.CITY)
     data = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -88,7 +89,7 @@ class DealReportSession(models.Model):
         ordering = ["-updated_at"]
 
     def reset(self) -> None:
-        self.step = self.Steps.STORE
+        self.step = self.Steps.CITY
         self.data = {}
         self.is_active = True
 
