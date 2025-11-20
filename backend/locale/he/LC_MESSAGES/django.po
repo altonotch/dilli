@@ -206,13 +206,18 @@ msgid "Which city is the store in?"
 msgstr "באיזו עיר נמצא הסניף?"
 
 #: whatsapp/deal_flow.py:200
-msgid "Change city"
-msgstr "שנו עיר"
+msgid "Different city"
+msgstr "עיר אחרת"
 
 #: whatsapp/deal_flow.py:202
 #, python-format
 msgid "Use your saved city (%(city)s) or choose another city."
 msgstr "השתמשו בעיר השמורה (%(city)s) או בחרו עיר אחרת."
+
+#: whatsapp/deal_flow.py:270
+#, python-format
+msgid "I found a few cities named “%(name)s”. Please pick one:"
+msgstr "מצאתי כמה ערים בשם \"%(name)s\". נא לבחור אחת:"
 
 #: whatsapp/deal_flow.py:221
 msgid ""

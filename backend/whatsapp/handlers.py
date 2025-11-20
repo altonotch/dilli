@@ -149,6 +149,12 @@ def _build_user_context(
         except Exception:
             # Do not fail the whole handling if something goes wrong here
             logger.exception("unit_type_map_failed", wa_hash=wa_norm)
+    elif button_reply_id and isinstance(button_reply_id, str) and (
+        button_reply_id in {"city_default", "city_change"}
+        or button_reply_id.startswith("city_pick:")
+    ):
+        body_text = button_reply_id
+        button_reply_id = None
 
     structlog_contextvars.bind_contextvars(user_id=str(obj.pk))
 

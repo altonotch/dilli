@@ -6,6 +6,7 @@ import structlog
 from dataclasses import dataclass
 from django.db.models import Q
 from django.utils import translation, timezone
+from django.utils.text import slugify
 from django.utils.translation import gettext as _
 
 from catalog.models import Product
@@ -21,10 +22,9 @@ from .unit_translations import (
 from .text_normalization import is_keyword_norm, normalize_for_match
 
 QUESTION_SEQUENCE = [
-    # Expected order by tests: ask for store, then branch, then city
+    DealReportSession.Steps.CITY,
     DealReportSession.Steps.STORE,
     DealReportSession.Steps.BRANCH,
-    DealReportSession.Steps.CITY,
     DealReportSession.Steps.STORE_CONFIRM,
     DealReportSession.Steps.PRODUCT,
     DealReportSession.Steps.BRAND,
@@ -90,7 +90,10 @@ def start_add_deal_flow(user: WAUser, locale: str) -> FlowMessage:
     DealReportSession.objects.filter(user=user, is_active=True).update(
         is_active=False, step=DealReportSession.Steps.CANCELED
     )
-    session = DealReportSession.objects.create(user=user)
+    # Start the flow by asking for the city first
+    session = DealReportSession.objects.create(
+        user=user, step=DealReportSession.Steps.CITY
+    )
     return _question_prompt(session, locale)
 
 
@@ -169,10 +172,7 @@ def _get_user_city_object(user: WAUser) -> Optional[City]:
         return None
     city = _match_city(city_name)
     if not city:
-        city = City.objects.create(
-            name_he=city_name,
-            name_en=city_name,
-        )
+        city = _create_city_from_name(city_name)
     if city:
         WAUser.objects.filter(pk=user.pk).update(city_obj=city, city=city.display_name)
         user.city_obj = city
@@ -196,19 +196,83 @@ def _assign_user_city(session: DealReportSession, city: Optional[City]) -> None:
     session.user.city = city.display_name
 
 
+def _set_city_data(session: DealReportSession, city: City) -> None:
+    _update_data(
+        session,
+        city_id=str(city.id),
+        city_he=city.name_he,
+        city_en=city.name_en,
+        city=city.display_name,
+        city_options=[],
+    )
+    _assign_user_city(session, city)
+
+
+def _create_city_from_name(name: str) -> City:
+    base = name or ""
+    has_he = _contains_hebrew(base)
+    has_en = _contains_latin(base)
+    name_he = base if has_he or not has_en else ""
+    name_en = base if has_en or not has_he else ""
+    if not name_he:
+        name_he = name_en or base
+    if not name_en:
+        name_en = name_he or base
+    return City.objects.create(
+        name_he=name_he,
+        name_en=name_en,
+    )
+
+
+def _find_city_candidates(name: str) -> list[City]:
+    if not name:
+        return []
+    slug = slugify(name, allow_unicode=True)
+    exact = City.objects.filter(
+        Q(name_he__iexact=name) | Q(name_en__iexact=name) | Q(slug__iexact=slug)
+    )
+    if exact.exists():
+        return list(exact)
+    return list(
+        City.objects.filter(
+            Q(name_he__icontains=name) | Q(name_en__icontains=name)
+        ).order_by("name_en", "name_he")[:5]
+    )
+
+
+def _resolve_city_selection(session: DealReportSession, locale: str) -> Optional[FlowMessage]:
+    data = session.data or {}
+    city_name = data.get("city")
+    matches = _find_city_candidates(city_name)
+    if not matches:
+        city_obj = _create_city_from_name(city_name)
+        _set_city_data(session, city_obj)
+        return None
+    if len(matches) == 1:
+        _set_city_data(session, matches[0])
+        return None
+
+    options = matches[:3]
+    buttons = [
+        {"id": f"city_pick:{city.id}", "title": city.display_name[:20]}
+        for city in options
+    ]
+    with translation.override(locale):
+        prompt = _("I found a few cities named “%(name)s”. Please pick one:") % {"name": city_name}
+    return FlowMessage(prompt, buttons=buttons)
+
+
 def _city_prompt(session: DealReportSession, locale: str) -> FlowMessage:
     city_obj = _get_user_city_object(session.user)
-    default_city = city_obj.display_name if city_obj else ""
     with translation.override(locale):
-        if not default_city:
+        if not city_obj:
             return FlowMessage(_("Which city is the store in?"))
-        change_label = _("Change city")
-        _update_data(session, city_change_label=change_label)
         prompt = _("Use your saved city (%(city)s) or choose another city.") % {
-            "city": default_city
+            "city": city_obj.display_name
         }
+        change_label = _("Different city")
         buttons = [
-            {"id": "city_default", "title": default_city[:20]},
+            {"id": "city_default", "title": city_obj.display_name[:20]},
             {"id": "city_change", "title": change_label[:20]},
         ]
         return FlowMessage(prompt, buttons=buttons)
@@ -342,77 +406,65 @@ def _handle_branch(
         _update_data(session, store_detail="")
     else:
         _update_data(session, store_detail=cleaned)
-    _advance(session)
+    # After we have store name, branch and city, attempt disambiguation.
+    if _maybe_request_store_choice(session):
+        # We advanced to STORE_CONFIRM and populated choices
+        return None
+    # Otherwise, proceed to product question
+    _advance(session, DealReportSession.Steps.PRODUCT)
 
 
 def _handle_city(
     session: DealReportSession, text: str, text_norm: str
 ) -> str | None:
-    cleaned = text.strip()
+    cleaned = (text or "").strip()
+    locale = translation.get_language() or getattr(session.user, "locale", "he")
     if not cleaned:
         return _("Please tell me which city this store is in.")
-    data = session.data or {}
-    change_label = (data.get("city_change_label") or "").strip()
-    # Compare normalized label if present
-    if change_label and normalize_for_match(change_label) == text_norm:
+
+    if cleaned == "city_default":
+        city_obj = _get_user_city_object(session.user)
+        if not city_obj:
+            return _("Please tell me which city this store is in.")
+        _set_city_data(session, city_obj)
+        if _maybe_request_store_choice(session):
+            return None
+        # Move to the next question in sequence (STORE)
+        _advance(session)
+        return None
+
+    if cleaned == "city_change" or is_keyword_norm(text_norm, "city_change", locale):
         return _("Okay, type the city name for this deal.")
-    locale = translation.get_language() or getattr(session.user, "locale", "he")
-    if is_keyword_norm(text_norm, "city_change", locale):
-        return _("Okay, type the city name for this deal.")
-    updates = {"city": cleaned, "city_change_label": None}
+
+    if cleaned.startswith("city_pick:"):
+        city_id = cleaned.split(":", 1)[1]
+        city_obj = City.objects.filter(pk=city_id).first()
+        if not city_obj:
+            return _("Please tell me which city this store is in.")
+        _set_city_data(session, city_obj)
+        if _maybe_request_store_choice(session):
+            return None
+        # Move to the next question in sequence (STORE)
+        _advance(session)
+        return None
+
+    updates = {"city": cleaned, "city_options": []}
     if _contains_hebrew(cleaned):
         updates["city_he"] = cleaned
     if _contains_latin(cleaned):
         updates["city_en"] = cleaned
     _update_data(session, **updates)
 
-    _ensure_city_reference(session)
+    resolution = _resolve_city_selection(session, locale)
+    if isinstance(resolution, FlowMessage):
+        return resolution
+
     if _maybe_request_store_choice(session):
         return None
-    _advance(session, DealReportSession.Steps.PRODUCT)
+    # Move to the next question in sequence (STORE)
+    _advance(session)
     return None
 
-
-def _ensure_city_reference(session: DealReportSession) -> Optional[City]:
-    data = session.data or {}
-    city = _city_from_session(data)
-    if city:
-        _update_data(
-            session, city_he=city.name_he, city_en=city.name_en, city=city.display_name
-        )
-        _assign_user_city(session, city)
-        return city
-
-    city_he = _normalize_text(data.get("city_he"))
-    city_en = _normalize_text(data.get("city_en"))
-    fallback = _normalize_text(data.get("city"))
-
-    city = None
-    for candidate in (city_he, city_en, fallback):
-        if candidate:
-            city = _match_city(candidate)
-            if city:
-                break
-
-    if not city:
-        name_he = city_he or fallback or city_en
-        name_en = city_en or fallback or city_he
-        if not (name_he or name_en):
-            return None
-        city = City.objects.create(
-            name_he=name_he or name_en,
-            name_en=name_en or name_he,
-        )
-
-    _update_data(
-        session,
-        city_id=str(city.id),
-        city_he=city.name_he,
-        city_en=city.name_en,
-        city=city.display_name,
-    )
-    _assign_user_city(session, city)
-    return city
 
 
 def _maybe_request_store_choice(session: DealReportSession) -> bool:

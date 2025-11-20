@@ -7,7 +7,12 @@ from django.test import TestCase
 from catalog.models import Product
 from stores.models import Store, City
 from whatsapp.models import WAUser, DealReportSession
-from whatsapp.deal_flow import start_add_deal_flow, handle_deal_flow_response, _find_store_candidates
+from whatsapp.deal_flow import (
+    start_add_deal_flow,
+    handle_deal_flow_response,
+    _find_store_candidates,
+    FlowMessage,
+)
 from pricing.models import PriceReport
 
 
@@ -22,12 +27,12 @@ class DealFlowTests(TestCase):
     def test_full_flow_collects_all_answers_and_returns_summary(self):
         locale = "en"
         prompt = start_add_deal_flow(self.user, locale)
-        self.assertIn("which store", self._text(prompt).lower())
+        self.assertIn("which city", self._text(prompt).lower())
 
         flow = [
+            ("ראש העין", "Which store"),
             ("Shufersal", "Which branch"),
-            ("Givat Tal", "Which city"),
-            ("ראש העין", "What product"),
+            ("Givat Tal", "What product"),
             ("Milk 3% 1L", "Which brand"),
             ("Tnuva", "What unit is the package"),
             ("Liter", "How many of that unit"),
@@ -76,11 +81,11 @@ class DealFlowTests(TestCase):
     def test_invalid_price_prompts_again(self):
         locale = "en"
         start_add_deal_flow(self.user, locale)
+        store_prompt = handle_deal_flow_response(self.user, locale, "City A")
+        self.assertIn("which store", self._text(store_prompt).lower())
         branch_prompt = handle_deal_flow_response(self.user, locale, "Store A")
         self.assertIn("branch", self._text(branch_prompt).lower())
-        city_prompt = handle_deal_flow_response(self.user, locale, "Main Branch")
-        self.assertIn("which city", self._text(city_prompt).lower())
-        product_prompt = handle_deal_flow_response(self.user, locale, "City A")
+        product_prompt = handle_deal_flow_response(self.user, locale, "Main Branch")
         self.assertIn("what product", self._text(product_prompt).lower())
         brand_prompt = handle_deal_flow_response(self.user, locale, "Product A")
         self.assertIn("which brand", self._text(brand_prompt).lower())
@@ -122,9 +127,9 @@ class DealFlowTests(TestCase):
 
         start_add_deal_flow(self.user, locale)
         flow_answers = [
+            "ראש העין",
             "Shufersal",
             "Givat Tal",
-            "ראש העין",
             "Milk 3% 1L",
             "skip",
             "Liter",
@@ -154,8 +159,8 @@ class DealFlowTests(TestCase):
         locale = "en"
         tel_aviv = City.objects.create(name_he="תל אביב", name_en="Tel Aviv")
         start_add_deal_flow(self.user, locale)
+        handle_deal_flow_response(self.user, locale, "תל אביב")
         handle_deal_flow_response(self.user, locale, "Store Alpha")
-        handle_deal_flow_response(self.user, locale, "skip")
         product_prompt = handle_deal_flow_response(self.user, locale, "תל אביב")
         self.assertIn("what product", self._text(product_prompt).lower())
         session = DealReportSession.objects.filter(user=self.user).latest("updated_at")
@@ -184,9 +189,10 @@ class DealFlowTests(TestCase):
         )
 
         start_add_deal_flow(self.user, locale)
+        handle_deal_flow_response(self.user, locale, "Tel Aviv")
         handle_deal_flow_response(self.user, locale, "Shufersal")
-        handle_deal_flow_response(self.user, locale, "Center")
-        choice_prompt = handle_deal_flow_response(self.user, locale, "Tel Aviv")
+        # After providing branch, store disambiguation should occur automatically
+        choice_prompt = handle_deal_flow_response(self.user, locale, "Center")
         choice_text = self._text(choice_prompt)
         self.assertIn("1)", choice_text)
         self.assertIn("2)", choice_text)
@@ -211,9 +217,9 @@ class DealFlowTests(TestCase):
             name_aliases_he=["וויקטורי"],
         )
         start_add_deal_flow(self.user, locale)
+        handle_deal_flow_response(self.user, locale, "ראש העין")
         handle_deal_flow_response(self.user, locale, "וויקטורי")
         handle_deal_flow_response(self.user, locale, "skip")
-        handle_deal_flow_response(self.user, locale, "ראש העין")
         handle_deal_flow_response(self.user, locale, "חלב")
         handle_deal_flow_response(self.user, locale, "דלג")
         handle_deal_flow_response(self.user, locale, "ליטר")
@@ -263,9 +269,9 @@ class DealFlowTests(TestCase):
             default_unit_quantity=Decimal("1.00"),
         )
         start_add_deal_flow(self.user, locale)
+        handle_deal_flow_response(self.user, locale, "ראש העין")
         handle_deal_flow_response(self.user, locale, "Shufersal")
         handle_deal_flow_response(self.user, locale, "Givat Tal")
-        handle_deal_flow_response(self.user, locale, "ראש העין")
         brand_prompt = handle_deal_flow_response(self.user, locale, "Milk 3% 1L")
         self.assertIn("which brand", self._text(brand_prompt).lower())
         unit_prompt = handle_deal_flow_response(self.user, locale, "skip")
@@ -283,41 +289,60 @@ class DealFlowTests(TestCase):
 
     def test_city_prompt_offers_default_choice(self):
         locale = "en"
-        self.user.city = "Tel Aviv"
+        saved_city = City.objects.create(name_he="תל אביב", name_en="Tel Aviv")
+        self.user.city_obj = saved_city
+        self.user.city = saved_city.display_name
         self.user.save()
-        start_add_deal_flow(self.user, locale)
-        handle_deal_flow_response(self.user, locale, "Store Alpha")
-        city_prompt = handle_deal_flow_response(self.user, locale, "Branch Beta")
+        # City should be the first prompt and include default/change buttons
+        city_prompt = start_add_deal_flow(self.user, locale)
         self.assertTrue(hasattr(city_prompt, "buttons"))
-        default_button = city_prompt.buttons[0]["title"]
-        change_button = city_prompt.buttons[1]["title"]
-        self.assertIn("Tel Aviv", default_button)
-        self.assertIn("Change", change_button)
+        self.assertEqual(city_prompt.buttons[0]["id"], "city_default")
+        self.assertEqual(city_prompt.buttons[1]["id"], "city_change")
 
     def test_city_change_button_requests_manual_input(self):
         locale = "en"
-        self.user.city = "Tel Aviv"
+        saved_city = City.objects.create(name_he="תל אביב", name_en="Tel Aviv")
+        haifa = City.objects.create(name_he="חיפה", name_en="Haifa")
+        self.user.city_obj = saved_city
+        self.user.city = saved_city.display_name
         self.user.save()
-        start_add_deal_flow(self.user, locale)
-        handle_deal_flow_response(self.user, locale, "Store Alpha")
-        city_prompt = handle_deal_flow_response(self.user, locale, "Branch Beta")
-        change_label = city_prompt.buttons[1]["title"]
-        response = handle_deal_flow_response(self.user, locale, change_label)
+        # City should be the first prompt
+        city_prompt = start_add_deal_flow(self.user, locale)
+        change_id = city_prompt.buttons[1]["id"]
+        response = handle_deal_flow_response(self.user, locale, change_id)
         self.assertIn("type the city name", self._text(response).lower())
         next_prompt = handle_deal_flow_response(self.user, locale, "Haifa")
-        self.assertIn("what product", self._text(next_prompt).lower())
+        # After city is chosen, we should be asked for store
+        self.assertIn("which store", self._text(next_prompt).lower())
         self.user.refresh_from_db()
-        self.assertEqual(self.user.city_obj.display_name, "Haifa")
+        self.assertEqual(self.user.city_obj_id, haifa.id)
 
     def test_default_city_button_advances_flow(self):
         locale = "en"
-        self.user.city = "Tel Aviv"
+        saved_city = City.objects.create(name_he="תל אביב", name_en="Tel Aviv")
+        self.user.city_obj = saved_city
+        self.user.city = saved_city.display_name
         self.user.save()
-        start_add_deal_flow(self.user, locale)
-        handle_deal_flow_response(self.user, locale, "Store Alpha")
-        city_prompt = handle_deal_flow_response(self.user, locale, "Branch Beta")
-        default_label = city_prompt.buttons[0]["title"]
-        product_prompt = handle_deal_flow_response(self.user, locale, default_label)
-        self.assertIn("what product", self._text(product_prompt).lower())
+        # City should be the first prompt
+        city_prompt = start_add_deal_flow(self.user, locale)
+        default_id = city_prompt.buttons[0]["id"]
+        store_prompt = handle_deal_flow_response(self.user, locale, default_id)
+        self.assertIn("which store", self._text(store_prompt).lower())
         self.user.refresh_from_db()
-        self.assertEqual(self.user.city_obj.display_name, "Tel Aviv")
+        self.assertEqual(self.user.city_obj_id, saved_city.id)
+
+    def test_city_disambiguation_prompts_buttons(self):
+        locale = "en"
+        tel_aviv = City.objects.create(name_he="תל אביב", name_en="Tel Aviv")
+        City.objects.create(name_he="תל אביב יפו", name_en="Tel Aviv-Yafo")
+        # Start flow and type partial city name to get city disambiguation
+        start_add_deal_flow(self.user, locale)
+        disambiguation = handle_deal_flow_response(self.user, locale, "Tel")
+        self.assertIsInstance(disambiguation, FlowMessage)
+        self.assertEqual(len(disambiguation.buttons), 2)
+        pick_id = disambiguation.buttons[0]["id"]
+        # After picking the city, we should be asked for the store
+        store_prompt = handle_deal_flow_response(self.user, locale, pick_id)
+        self.assertIn("which store", self._text(store_prompt).lower())
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.city_obj_id, tel_aviv.id)
