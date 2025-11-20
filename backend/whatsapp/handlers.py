@@ -85,11 +85,14 @@ def _build_user_context(
 
     # Language choice intent from the raw text (do not apply locale change here)
     lang_choice = parse_language_choice(body_text)
+    logger.info("language_choice", choice=lang_choice)
 
     # Only auto-detect language for non-numeric messages; numbers shouldn't flip locale
     stripped = (body_text or "").strip()
     is_numeric_only = bool(stripped) and stripped.isdigit()
+    logger.info("message_is_numeric_only", is_numeric=is_numeric_only)
     inferred_locale = detect_locale(body_text) if not is_numeric_only else None
+    logger.info("detected_locale", locale=inferred_locale)
 
     defaults = {
         "consent_ts": timezone.now(),
@@ -143,7 +146,7 @@ def _build_user_context(
                 button_reply_id = None  # Ensure normal text handling continues
         except Exception:
             # Do not fail the whole handling if something goes wrong here
-            logger.exception("Failed to map unit_type button to text for %s", wa_norm)
+            logger.exception("unit_type_map_failed", wa_hash=wa_norm)
 
     structlog_contextvars.bind_contextvars(user_id=str(obj.pk))
 

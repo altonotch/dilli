@@ -73,6 +73,8 @@ BRANCH_SKIP_KEYWORDS = {
 }
 MAX_STORE_CHOICES = 5
 HEBREW_DOUBLE_FORMS = (("וו", "ו"), ("יי", "י"))
+CITY_CHANGE_KEYWORDS_EN = {"change city", "change", "other city"}
+CITY_CHANGE_KEYWORDS_HE = {"שנה עיר", "שנו עיר", "עיר אחרת", "שינוי עיר"}
 
 
 @dataclass
@@ -166,13 +168,13 @@ def handle_deal_flow_response(user: WAUser, locale: str, message_text: Optional[
         # If handler returned None, we already advanced and should ask next question
         if session.step in QUESTION_SEQUENCE:
             return _question_prompt(session, locale)
-        else:
-            summary = _format_summary(session.data, locale)
-            try:
-                _persist_price_report(session, user)
-            except Exception:
-                logger.exception("Failed to persist deal session %s", session.pk)
-            return FlowMessage(summary)
+
+        summary = _format_summary(session.data, locale)
+        try:
+            _persist_price_report(session, user)
+        except Exception:
+            logger.exception("persist_price_report_failed", session_id=session.pk)
+        return FlowMessage(summary)
 
 
 def _unit_type_buttons(locale: str) -> list[dict]:
@@ -187,12 +189,66 @@ def _unit_type_buttons(locale: str) -> list[dict]:
     return buttons
 
 
+def _get_user_city_object(user: WAUser) -> Optional[City]:
+    city = getattr(user, "city_obj", None)
+    if city:
+        return city
+    city_name = (user.city or "").strip()
+    if not city_name:
+        return None
+    city = _match_city(city_name)
+    if not city:
+        city = City.objects.create(
+            name_he=city_name,
+            name_en=city_name,
+        )
+    if city:
+        WAUser.objects.filter(pk=user.pk).update(city_obj=city, city=city.display_name)
+        user.city_obj = city
+        user.city = city.display_name
+    return city
+
+
+def _assign_user_city(session: DealReportSession, city: Optional[City]) -> None:
+    if not city:
+        return
+    if (
+        session.user.city_obj_id == city.id
+        and (session.user.city or "").strip() == city.display_name
+    ):
+        return
+    WAUser.objects.filter(pk=session.user.pk).update(
+        city_obj=city,
+        city=city.display_name,
+    )
+    session.user.city_obj = city
+    session.user.city = city.display_name
+
+
+def _city_prompt(session: DealReportSession, locale: str) -> FlowMessage:
+    city_obj = _get_user_city_object(session.user)
+    default_city = city_obj.display_name if city_obj else ""
+    with translation.override(locale):
+        if not default_city:
+            return FlowMessage(_("Which city is the store in?"))
+        change_label = _("Change city")
+        _update_data(session, city_change_label=change_label)
+        prompt = _("Use your saved city (%(city)s) or choose another city.") % {"city": default_city}
+        buttons = [
+            {"id": "city_default", "title": default_city[:20]},
+            {"id": "city_change", "title": change_label[:20]},
+        ]
+        return FlowMessage(prompt, buttons=buttons)
+
+
 def _question_prompt(session: DealReportSession, locale: str) -> FlowMessage:
     step = session.step
     data = session.data or {}
     with translation.override(locale):
         if step == DealReportSession.Steps.STORE_CONFIRM:
             return FlowMessage(_format_store_choice_prompt(data))
+        if step == DealReportSession.Steps.CITY:
+            return _city_prompt(session, locale)
 
         prompts = {
             DealReportSession.Steps.STORE: _(
@@ -200,9 +256,6 @@ def _question_prompt(session: DealReportSession, locale: str) -> FlowMessage:
             ),
             DealReportSession.Steps.BRANCH: _(
                 "Which branch or neighborhood is it? Example: “Givat Tal” or “Dizengoff 50”. Type \"skip\" if you’re not sure."
-            ),
-            DealReportSession.Steps.CITY: _(
-                "Which city is the store in?"
             ),
             DealReportSession.Steps.PRODUCT: _(
                 "What product is this? (We’ll ask about size in the next questions.)"
@@ -308,7 +361,14 @@ def _handle_city(session: DealReportSession, text: str) -> str | None:
     cleaned = text.strip()
     if not cleaned:
         return _("Please tell me which city this store is in.")
-    updates = {"city": cleaned}
+    data = session.data or {}
+    change_label = (data.get("city_change_label") or "").strip().lower()
+    lower = cleaned.lower()
+    if change_label and lower == change_label:
+        return _("Okay, type the city name for this deal.")
+    if lower in CITY_CHANGE_KEYWORDS_EN or lower in CITY_CHANGE_KEYWORDS_HE:
+        return _("Okay, type the city name for this deal.")
+    updates = {"city": cleaned, "city_change_label": None}
     if _contains_hebrew(cleaned):
         updates["city_he"] = cleaned
     if _contains_latin(cleaned):
@@ -327,6 +387,7 @@ def _ensure_city_reference(session: DealReportSession) -> Optional[City]:
     city = _city_from_session(data)
     if city:
         _update_data(session, city_he=city.name_he, city_en=city.name_en, city=city.display_name)
+        _assign_user_city(session, city)
         return city
 
     city_he = _normalize_text(data.get("city_he"))
@@ -357,6 +418,7 @@ def _ensure_city_reference(session: DealReportSession) -> Optional[City]:
         city_en=city.name_en,
         city=city.display_name,
     )
+    _assign_user_city(session, city)
     return city
 
 
@@ -528,6 +590,11 @@ def _handle_cart(session: DealReportSession, text: str) -> str | None:
     return None
 
 
+def _handle_default_city_confirm(session: DealReportSession, text: str) -> str | None:
+    lower = text.strip().lower()
+    data = session.data or {}
+    locale = session.user.locale or "he"
+    city_value = _format_city_value(data, locale)
 def _format_summary(data: dict, locale: str) -> str:
     with translation.override(locale):
         city_value = _format_city_value(data, locale)

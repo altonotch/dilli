@@ -57,9 +57,9 @@ class MetaWebhookView(APIView):
             expected = getattr(settings, "WHATSAPP_VERIFY_TOKEN", "")
             if expected and token != expected:
                 logger.warning(
-                    "Webhook verify token mismatch expected=%s provided=%s",
-                    expected,
-                    token,
+                    "webhook_verify_token_mismatch",
+                    expected=expected,
+                    provided=token,
                 )
             if challenge:
                 return HttpResponse(challenge, content_type="text/plain")
@@ -67,16 +67,16 @@ class MetaWebhookView(APIView):
         return HttpResponse(status=status.HTTP_200_OK)
 
     def post(self, request: HttpRequest) -> JsonResponse:
-        logger.info("Received WhatsApp webhook headers=%s", dict(request.headers))
+        logger.info("webhook_request_received", headers=dict(request.headers))
         if not _verify_signature(request):
-            logger.warning("Invalid signature on webhook")
+            logger.warning("webhook_invalid_signature")
             return JsonResponse({"detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
             payload = json.loads(request.body.decode("utf-8"))
-            logger.debug("Webhook payload: %s", payload)
+            logger.debug("webhook_payload_decoded", payload=payload)
         except Exception:
-            logger.exception("Failed to decode webhook JSON")
+            logger.exception("webhook_json_decode_failed")
             return JsonResponse({"detail": "bad json"}, status=status.HTTP_400_BAD_REQUEST)
 
         processed: int = 0
@@ -90,19 +90,19 @@ class MetaWebhookView(APIView):
                     structlog_contextvars.clear_contextvars()
                     wa_raw = str(msg.get("from", ""))
                     wa_norm = normalize_wa_id(wa_raw)
-                    logger.info("Processing message: wa_raw=%s message=%s", wa_raw, msg)
+                    logger.info("webhook_processing_message", wa_raw=wa_raw, message=msg)
                     if not wa_norm:
-                        logger.warning("Unable to normalize WhatsApp id: %s", wa_raw)
+                        logger.warning("webhook_unable_to_normalize_wa", wa_raw=wa_raw)
                         continue
 
                     # Resolve user and message context once
                     ctx = _build_user_context(wa_norm=wa_norm, msg=msg, contacts=contacts, value=value)
                     logger.info(
-                        "Resolved WAUser id=%s created=%s wa_number=%s locale=%s",
-                        ctx.user.pk,
-                        ctx.created,
-                        ctx.wa_norm,
-                        ctx.current_locale,
+                        "webhook_user_resolved",
+                        user_id=ctx.user.pk,
+                        created=ctx.created,
+                        wa_number=ctx.wa_norm,
+                        locale=ctx.current_locale,
                     )
 
                     # Generic state-machine evaluation via handlers
@@ -113,16 +113,20 @@ class MetaWebhookView(APIView):
                             payload = handler(ctx, msg)
                             if payload:
                                 state = state_name
-                                logger.info("State=%s for %s", state, ctx.wa_norm)
+                                logger.info("handler_state", state=state, wa_hash=ctx.wa_hash)
                                 _send_flow_message(ctx.wa_norm, payload)
-                                logger.info("Response for %s: %s", ctx.wa_norm, summarize_payload(payload))
+                                logger.info(
+                                    "handler_response_sent",
+                                    wa_hash=ctx.wa_hash,
+                                    payload=summarize_payload(payload),
+                                )
                                 processed += 1
                                 handled = True
                                 break
                             else:
-                                logger.info("No response for %s", state_name)
+                                logger.info("handler_no_response", state=state_name, wa_hash=ctx.wa_hash)
                     except Exception:
-                        logger.exception("failed to send onboarding/flow message to %s", ctx.wa_norm)
+                        logger.exception("handler_send_failed", wa_hash=ctx.wa_hash)
 
                     if handled:
                         continue
@@ -130,12 +134,16 @@ class MetaWebhookView(APIView):
                     # Fallback: intro/help
                     state = state or "FALLBACK"
                     fallback = fallback_payload(ctx)
-                    logger.info("State=%s Sending fallback intro/help to %s", state, ctx.wa_norm)
+                    logger.info("handler_fallback_intro", state=state, wa_hash=ctx.wa_hash)
                     _send_flow_message(ctx.wa_norm, fallback)
-                    logger.info("Response for %s: %s", ctx.wa_norm, summarize_payload(fallback))
+                    logger.info(
+                        "handler_fallback_response",
+                        wa_hash=ctx.wa_hash,
+                        payload=summarize_payload(fallback),
+                    )
                     processed += 1
 
-        logger.info("Completed webhook processing processed=%s", processed)
+        logger.info("webhook_processing_completed", processed=processed)
         return JsonResponse({"status": "ok", "processed": processed})
      
      

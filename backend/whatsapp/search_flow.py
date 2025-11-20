@@ -21,7 +21,7 @@ logger = structlog.get_logger(__name__)
 def start_find_deal_flow(user: WAUser, locale: str) -> str:
     DealLookupSession.objects.filter(user=user, is_active=True).update(is_active=False, step=DealLookupSession.Steps.CANCELED)
     session = DealLookupSession.objects.create(user=user)
-    logger.info("Started find-deal flow session=%s user=%s", session.pk, user.pk)
+    logger.info("find_deal_flow_started", session_id=session.pk, user_id=user.pk)
     return _question(session.step, locale)
 
 
@@ -39,10 +39,10 @@ def handle_find_deal_text(user: WAUser, locale: str, message_text: Optional[str]
             session.step = DealLookupSession.Steps.BRAND
             session.save(update_fields=["data", "step", "updated_at"])
             logger.info(
-                "Captured product query for find-deal session=%s user=%s query=%s",
-                session.pk,
-                user.pk,
-                text[:80],
+                "find_deal_product_captured",
+                session_id=session.pk,
+                user_id=user.pk,
+                query=text[:80],
             )
             return _question(session.step, locale)
         if session.step == DealLookupSession.Steps.BRAND:
@@ -52,10 +52,10 @@ def handle_find_deal_text(user: WAUser, locale: str, message_text: Optional[str]
             session.step = DealLookupSession.Steps.LOCATION
             session.save(update_fields=["data", "step", "updated_at"])
             logger.info(
-                "Captured brand query for find-deal session=%s user=%s brand=%s",
-                session.pk,
-                user.pk,
-                (brand_value or "any")[:80],
+                "find_deal_brand_captured",
+                session_id=session.pk,
+                user_id=user.pk,
+                brand=(brand_value or "any")[:80],
             )
             return _question(session.step, locale)
         if session.step == DealLookupSession.Steps.LOCATION:
@@ -64,10 +64,10 @@ def handle_find_deal_text(user: WAUser, locale: str, message_text: Optional[str]
             session.is_active = False
             session.save(update_fields=["data", "step", "is_active", "updated_at"])
             logger.info(
-                "Captured city query for find-deal session=%s user=%s city=%s",
-                session.pk,
-                user.pk,
-                text[:80],
+                "find_deal_city_captured",
+                session_id=session.pk,
+                user_id=user.pk,
+                city=text[:80],
             )
             return _format_results(session, locale)
     return None
@@ -78,11 +78,11 @@ def handle_find_deal_location(user: WAUser, locale: str, location_payload: dict)
     if not session or session.step != DealLookupSession.Steps.LOCATION:
         return None
     logger.info(
-        "Received location payload for find-deal session=%s user=%s lat=%s lon=%s",
-        session.pk,
-        user.pk,
-        location_payload.get("latitude"),
-        location_payload.get("longitude"),
+        "find_deal_location_received",
+        session_id=session.pk,
+        user_id=user.pk,
+        latitude=location_payload.get("latitude"),
+        longitude=location_payload.get("longitude"),
     )
     with translation.override(locale):
         return _("Please type the city name so I can find the right deals.")
@@ -120,13 +120,13 @@ def _format_results(session: DealLookupSession, locale: str) -> str:
 
     deals = _fetch_deals(product_query, brand_query, city_query, locale)
     logger.info(
-        "Formatted find-deal results session=%s user=%s product=%s brand=%s city=%s count=%s",
-        session.pk,
-        session.user_id,
-        product_query,
-        brand_query or "any",
-        city_query,
-        len(deals),
+        "find_deal_results",
+        session_id=session.pk,
+        user_id=session.user_id,
+        product=product_query,
+        brand=brand_query or "any",
+        city=city_query,
+        count=len(deals),
     )
     with translation.override(locale):
         if not deals:

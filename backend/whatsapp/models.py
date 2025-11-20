@@ -19,6 +19,13 @@ class WAUser(models.Model):
     display_name = models.CharField(max_length=255, blank=True)
     locale = models.CharField(max_length=10, default='he-IL')
     city = models.CharField(max_length=120, blank=True)
+    city_obj = models.ForeignKey(
+        "stores.City",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="wa_users",
+    )
     tz = models.CharField(max_length=64, default='Asia/Jerusalem')
 
     # Lifecycle

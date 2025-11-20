@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-17 14:51+0000\n"
+"POT-Creation-Date: 2025-11-18 11:56+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -189,19 +189,32 @@ msgstr "שמרו שינויים"
 msgid "Cancel"
 msgstr "בטלו"
 
-#: whatsapp/deal_flow.py:144
+#: whatsapp/deal_flow.py:146
 msgid "Please send a reply so I can continue."
 msgstr "אנא שלחו תשובה כדי שאוכל להמשיך."
 
-#: whatsapp/deal_flow.py:151
+#: whatsapp/deal_flow.py:153
 msgid "Okay, I canceled that deal. Tap “Add a deal” anytime to start again."
 msgstr "בסדר, ביטלתי את הדיל. לחצו \"הוסף דיל\" בכל רגע כדי להתחיל מחדש."
 
-#: whatsapp/deal_flow.py:158
+#: whatsapp/deal_flow.py:160
 msgid "Thanks! You can start a new deal anytime."
 msgstr "תודה! תוכלו להתחיל דיל חדש בכל רגע."
 
 #: whatsapp/deal_flow.py:199
+msgid "Which city is the store in?"
+msgstr "באיזו עיר נמצא הסניף?"
+
+#: whatsapp/deal_flow.py:200
+msgid "Change city"
+msgstr "שנו עיר"
+
+#: whatsapp/deal_flow.py:202
+#, python-format
+msgid "Use your saved city (%(city)s) or choose another city."
+msgstr "השתמשו בעיר השמורה (%(city)s) או בחרו עיר אחרת."
+
+#: whatsapp/deal_flow.py:221
 msgid ""
 "Which store or chain is this deal from?\n"
 "Example: “Shufersal” or “Rami Levy”."
@@ -209,33 +222,29 @@ msgstr ""
 "מאיזו רשת או חנות מגיע הדיל?\n"
 "לדוגמה: \"שופרסל\" או \"רמי לוי\"."
 
-#: whatsapp/deal_flow.py:202
+#: whatsapp/deal_flow.py:224
 msgid ""
 "Which branch or neighborhood is it? Example: “Givat Tal” or “Dizengoff 50”. "
 "Type \"skip\" if you’re not sure."
 msgstr ""
-"מה שם הסניף או השכונה? לדוגמה: \"גבעת טל\" או \"דיזנגוף 50\". כתבו \"דלג\" אם "
-"אינכם בטוחים."
+"מה שם הסניף או השכונה? לדוגמה: \"גבעת טל\" או \"דיזנגוף 50\". כתבו \"דלג\" "
+"אם אינכם בטוחים."
 
-#: whatsapp/deal_flow.py:205
-msgid "Which city is the store in?"
-msgstr "באיזו עיר נמצא הסניף?"
-
-#: whatsapp/deal_flow.py:208
+#: whatsapp/deal_flow.py:227
 msgid "What product is this? (We’ll ask about size in the next questions.)"
 msgstr "מהו המוצר? (נשאל על הגודל בשאלות הבאות.)"
 
-#: whatsapp/deal_flow.py:211
+#: whatsapp/deal_flow.py:230
 msgid ""
 "Which brand makes this product? Reply with the brand name or type \"skip\" "
 "if you're not sure."
 msgstr "איזה מותג מייצר את המוצר? כתבו את שם המותג או \"דלג\" אם אינכם בטוחים."
 
-#: whatsapp/deal_flow.py:214
+#: whatsapp/deal_flow.py:233
 msgid "What unit is the package? (e.g., liter, kilogram, pack)."
 msgstr "מהי יחידת האריזה? (למשל ליטר, קילוגרם, חבילה)."
 
-#: whatsapp/deal_flow.py:217
+#: whatsapp/deal_flow.py:236
 #, fuzzy
 #| msgid ""
 #| "How many units does this price cover? Reply with a number (default 1)."
@@ -244,191 +253,205 @@ msgid ""
 "2)."
 msgstr "כמה יחידות כאלה יש באריזה? כתבו מספר (למשל 1, 1.5, 2)."
 
-#: whatsapp/deal_flow.py:220
+#: whatsapp/deal_flow.py:239
 msgid "What is the price? Reply with numbers only (e.g., 4.90)."
 msgstr "מה המחיר? כתבו מספרים בלבד (למשל 4.90)."
 
-#: whatsapp/deal_flow.py:223
+#: whatsapp/deal_flow.py:242
 msgid "How many units does this price cover? Reply with a number (default 1)."
 msgstr "כמה יחידות נכללות במחיר הזה? כתבו מספר (ברירת מחדל 1)."
 
-#: whatsapp/deal_flow.py:226
+#: whatsapp/deal_flow.py:245
 msgid "Is this deal only for club/loyalty members? Reply “yes” or “no”."
 msgstr "האם הדיל תקף רק לחברי מועדון? כתבו \"כן\" או \"לא\"."
 
-#: whatsapp/deal_flow.py:229
+#: whatsapp/deal_flow.py:248
 msgid "Is there a quantity limit per shopper? Reply with a number or “no”."
 msgstr "האם יש הגבלת כמות ללקוח? כתבו מספר או \"לא\"."
 
-#: whatsapp/deal_flow.py:232
+#: whatsapp/deal_flow.py:251
 msgid ""
 "Is there a minimum cart total to unlock this deal? Reply with an amount or "
 "“no”."
 msgstr "האם נדרש סכום סל מינימלי כדי לקבל את הדיל? כתבו סכום או \"לא\"."
 
-#: whatsapp/deal_flow.py:235 whatsapp/search_flow.py:107
+#: whatsapp/deal_flow.py:254 whatsapp/search_flow.py:106
 msgid "Thanks!"
 msgstr "תודה!"
 
-#: whatsapp/deal_flow.py:238
+#: whatsapp/deal_flow.py:257
 msgid "Tap one of the buttons or type another unit."
 msgstr "בחרו באחת מהאפשרויות או כתבו יחידה אחרת."
 
-#: whatsapp/deal_flow.py:246
+#: whatsapp/deal_flow.py:265
 msgid "this store"
 msgstr "החנות הזו"
 
-#: whatsapp/deal_flow.py:251
+#: whatsapp/deal_flow.py:270
 #, python-format
 msgid ""
 "Please tell me which branch %(store)s is so I can match the right location."
 msgstr "ספרו לי איזה סניף של %(store)s זה כדי שאוכל לבחור את המיקום הנכון."
 
-#: whatsapp/deal_flow.py:255
+#: whatsapp/deal_flow.py:274
 #, python-format
 msgid "I found a few stores named %(store)s in %(city)s:"
 msgstr "מצאתי כמה חנויות בשם %(store)s ב%(city)s:"
 
-#: whatsapp/deal_flow.py:257
+#: whatsapp/deal_flow.py:276
 msgid "this city"
 msgstr "העיר הזו"
 
-#: whatsapp/deal_flow.py:264
+#: whatsapp/deal_flow.py:283
 #, python-format
 msgid "%(index)s) %(label)s — %(detail)s"
 msgstr "%(index)s) %(label)s — %(detail)s"
 
-#: whatsapp/deal_flow.py:266
+#: whatsapp/deal_flow.py:285
 #, python-format
 msgid "%(index)s) %(label)s"
 msgstr "%(index)s) %(label)s"
 
-#: whatsapp/deal_flow.py:268
+#: whatsapp/deal_flow.py:287
 msgid ""
 "Reply with the matching number, or type the branch/address if it's not in "
 "this list."
 msgstr "ענו עם המספר המתאים, או כתבו את שם/כתובת הסניף אם הוא לא מופיע כאן."
 
-#: whatsapp/deal_flow.py:310
+#: whatsapp/deal_flow.py:329
 msgid "Please tell me which city this store is in."
 msgstr "ספרו לי באיזו עיר נמצא הסניף."
 
-#: whatsapp/deal_flow.py:401
+#: whatsapp/deal_flow.py:334 whatsapp/deal_flow.py:336
+msgid "Okay, type the city name for this deal."
+msgstr "בסדר, כתבו את שם העיר עבור הדיל הזה."
+
+#: whatsapp/deal_flow.py:428
 #, python-format
 msgid ""
 "Please reply with a number between 1 and %(count)s, or type the branch name."
 msgstr "ענו במספר בין 1 ל-%(count)s, או כתבו את שם הסניף."
 
-#: whatsapp/deal_flow.py:412
+#: whatsapp/deal_flow.py:439
 msgid ""
 "Please reply with the number from the list or describe the branch/address."
 msgstr "ענו עם המספר מהרשימה או תארו את הסניף/הכתובת."
 
-#: whatsapp/deal_flow.py:435
+#: whatsapp/deal_flow.py:462
 msgid "Please send the price as digits, e.g., 4.90"
 msgstr "אנא כתבו את המחיר בספרות, לדוגמה 4.90"
 
-#: whatsapp/deal_flow.py:437
+#: whatsapp/deal_flow.py:464
 msgid "Price must be greater than zero."
 msgstr "המחיר חייב להיות גדול מאפס."
 
-#: whatsapp/deal_flow.py:449
+#: whatsapp/deal_flow.py:476
 msgid "Please reply with a whole number, e.g., 1 or 3."
 msgstr "ענו במספר שלם, למשל 1 או 3."
 
-#: whatsapp/deal_flow.py:452
+#: whatsapp/deal_flow.py:479
 msgid "Number of units must be at least 1."
 msgstr "מספר היחידות חייב להיות 1 ומעלה."
 
-#: whatsapp/deal_flow.py:461
+#: whatsapp/deal_flow.py:488
 msgid "Please specify the unit type (e.g., liter, kilogram, pack)."
 msgstr "אנא ציינו את סוג היחידה (ליטר, קילוגרם, חבילה וכו')."
 
-#: whatsapp/deal_flow.py:479
+#: whatsapp/deal_flow.py:506
 #, fuzzy
 #| msgid "Please reply with a whole number, e.g., 1 or 3."
 msgid "Please reply with a numeric quantity (e.g., 1, 1.5, 2)."
 msgstr "ענו במספר (למשל 1, 1.5, 2)."
 
-#: whatsapp/deal_flow.py:481
+#: whatsapp/deal_flow.py:508
 #, fuzzy
 #| msgid "Price must be greater than zero."
 msgid "Quantity must be greater than zero."
 msgstr "הכמות חייבת להיות גדולה מאפס."
 
-#: whatsapp/deal_flow.py:494
+#: whatsapp/deal_flow.py:521 whatsapp/deal_flow.py:572
 msgid "Please reply “yes” or “no”."
 msgstr "ענו \"כן\" או \"לא\"."
 
-#: whatsapp/deal_flow.py:505
+#: whatsapp/deal_flow.py:532
 msgid "Please reply with a number (e.g., 2) or “no”."
 msgstr "ענו במספר (למשל 2) או כתבו \"לא\"."
 
-#: whatsapp/deal_flow.py:508
+#: whatsapp/deal_flow.py:535
 msgid "Limit must be at least 1, or reply “no”."
 msgstr "המגבלה חייבת להיות לפחות 1, או כתבו \"לא\"."
 
-#: whatsapp/deal_flow.py:523
+#: whatsapp/deal_flow.py:550
 msgid "Please send the amount as digits, e.g., 100 or 150.5"
 msgstr "אנא כתבו את הסכום בספרות, למשל 100 או 150.5"
 
-#: whatsapp/deal_flow.py:525
+#: whatsapp/deal_flow.py:552
 msgid "Cart total must be greater than zero, or reply “no”."
 msgstr "סכום הסל חייב להיות גדול מאפס, או כתבו \"לא\"."
 
-#: whatsapp/deal_flow.py:535
+#: whatsapp/deal_flow.py:568
+#, python-format
+msgid "Great! I'll remember %(city)s for next time."
+msgstr "נהדר! אזכור את %(city)s לפעם הבאה."
+
+#: whatsapp/deal_flow.py:570
+msgid "No problem, I won't save it."
+msgstr "אין בעיה, לא אשמור את זה."
+
+#: whatsapp/deal_flow.py:583
 #, python-format
 msgid "Store: %(value)s"
 msgstr "חנות: %(value)s"
 
-#: whatsapp/deal_flow.py:536
+#: whatsapp/deal_flow.py:584
 #, python-format
 msgid "City: %(value)s"
 msgstr "עיר: %(value)s"
 
-#: whatsapp/deal_flow.py:537
+#: whatsapp/deal_flow.py:585
 #, python-format
 msgid "Product: %(value)s"
 msgstr "מוצר: %(value)s"
 
-#: whatsapp/deal_flow.py:541
+#: whatsapp/deal_flow.py:589
+#, python-format
 msgid "Branch or address: %(value)s"
 msgstr "סניף או כתובת: %(value)s"
 
-#: whatsapp/deal_flow.py:544
+#: whatsapp/deal_flow.py:592
 #, python-format
 msgid "Brand: %(value)s"
 msgstr "מותג: %(value)s"
 
-#: whatsapp/deal_flow.py:548
+#: whatsapp/deal_flow.py:596
 #, python-format
 msgid "Price: %(price)s (%(units)s unit(s))"
 msgstr "מחיר: %(price)s (%(units)s יחידות)"
 
-#: whatsapp/deal_flow.py:552
+#: whatsapp/deal_flow.py:600
 #, python-format
 msgid "Package size: %(qty)s %(unit)s"
 msgstr "גודל אריזה: %(qty)s %(unit)s"
 
-#: whatsapp/deal_flow.py:555
+#: whatsapp/deal_flow.py:603
 msgid "Club members only: yes"
 msgstr "רק לחברי מועדון: כן"
 
-#: whatsapp/deal_flow.py:557
+#: whatsapp/deal_flow.py:605
 msgid "Club members only: no"
 msgstr "רק לחברי מועדון: לא"
 
-#: whatsapp/deal_flow.py:560
+#: whatsapp/deal_flow.py:608
 #, python-format
 msgid "Quantity limit: %(limit)s"
 msgstr "הגבלת כמות: %(limit)s"
 
-#: whatsapp/deal_flow.py:563
+#: whatsapp/deal_flow.py:611
 #, python-format
 msgid "Minimum cart: %(amount)s"
 msgstr "סל מינימלי: %(amount)s"
 
-#: whatsapp/deal_flow.py:566
+#: whatsapp/deal_flow.py:614
 msgid ""
 "Thanks! We'll review this deal and let everyone know. Tap “Add a deal” to "
 "share another price, or “Find a deal” to see recent reports."
@@ -436,74 +459,81 @@ msgstr ""
 "תודה! נעבור על הדיל הזה ונעדכן את כולם. לחצו \"הוסף דיל\" כדי לשתף מחיר נוסף "
 "או \"מצא דיל\" כדי לראות דיווחים אחרונים."
 
-#: whatsapp/deal_flow.py:569
+#: whatsapp/deal_flow.py:617
 msgid "Status: awaiting moderation"
 msgstr "סטטוס: ממתין לאישור צוות"
 
-#: whatsapp/deal_flow.py:570
+#: whatsapp/deal_flow.py:618
 msgid "Thank you for helping the community save together!"
 msgstr "תודה שאתם עוזרים לכולם לחסוך ביחד!"
 
-#: whatsapp/deal_flow.py:901
+#: whatsapp/deal_flow.py:634
+#, python-format
+msgid "Should I remember %(city)s as your default city for next time?"
+msgstr "לשמור את %(city)s כעיר ברירת מחדל לפעם הבאה?"
+
+#: whatsapp/deal_flow.py:635
+msgid "Yes"
+msgstr "כן"
+
+#: whatsapp/deal_flow.py:636
+msgid "No"
+msgstr "לא"
+
+#: whatsapp/deal_flow.py:973
 #, python-format
 msgid "Limit per shopper: %(limit)s"
 msgstr "הגבלה ללקוח: %(limit)s"
 
-#: whatsapp/search_flow.py:89
-#, fuzzy
-#| msgid "Please type the city name in Hebrew."
+#: whatsapp/search_flow.py:88
 msgid "Please type the city name so I can find the right deals."
-msgstr "כתבו את שם העיר בעברית."
+msgstr "כתבו את שם העיר כדי שאוכל למצוא דילים מתאימים."
 
-#: whatsapp/search_flow.py:99
+#: whatsapp/search_flow.py:98
 msgid "Which product are you looking for?"
 msgstr "איזה מוצר אתם מחפשים?"
 
-#: whatsapp/search_flow.py:101
-#, fuzzy
-#| msgid ""
-#| "Which brand makes this product? Reply with the brand name or type "
-#| "\"skip\" if you're not sure."
+#: whatsapp/search_flow.py:100
 msgid ""
 "Which brand do you prefer for this product? Type \"skip\" if you don't mind."
-msgstr "איזה מותג מייצר את המוצר? כתבו את שם המותג או \"דלג\" אם אינכם בטוחים."
+msgstr "איזה מותג אתם מעדיפים למוצר הזה? כתבו את שם המותג או \"דלג\" אם זה לא משנה."
 
-#: whatsapp/search_flow.py:104
-#, fuzzy
-#| msgid "Which city is the store in?"
+#: whatsapp/search_flow.py:103
 msgid "Which city should I search in?"
-msgstr "באיזו עיר נמצא הסניף?"
+msgstr "באיזו עיר לחפש?"
 
-#: whatsapp/search_flow.py:117
+#: whatsapp/search_flow.py:116
 msgid "Please start again and tell me which product you want."
 msgstr "נא להתחיל מחדש ולספר איזה מוצר אתם רוצים."
 
-#: whatsapp/search_flow.py:120
+#: whatsapp/search_flow.py:119
 msgid "Please start again and tell me which city you want."
 msgstr "נא להתחיל מחדש ולספר באיזו עיר לחפש."
 
-#: whatsapp/search_flow.py:135
+#: whatsapp/search_flow.py:134
+#, python-format
 msgid "Sorry, I couldn't find any recent deals for %(product)s in %(city)s."
 msgstr "מצטערים, לא מצאתי דילים עדכניים עבור %(product)s בעיר %(city)s."
 
-#: whatsapp/search_flow.py:138
+#: whatsapp/search_flow.py:137
 msgid "Here are the latest deals:"
 msgstr "הנה הדילים האחרונים:"
 
-#: whatsapp/search_flow.py:140
+#: whatsapp/search_flow.py:139
 #, python-format
 msgid " (%(brand)s)"
 msgstr " (%(brand)s)"
 
-#: whatsapp/search_flow.py:141
+#: whatsapp/search_flow.py:140
+#, python-format
 msgid "• %(product)s%(brand)s — %(price)s₪ at %(store)s (%(city)s)"
 msgstr "• %(product)s%(brand)s — %(price)s₪ ב%(store)s (%(city)s)"
 
-#: whatsapp/search_flow.py:149
+#: whatsapp/search_flow.py:148
 msgid "Tip: tap “Add a deal” to share your own find."
 msgstr "טיפ: לחצו \"הוסף דיל\" כדי לשתף דיל שאתם מצאתם."
 
-#: whatsapp/utils.py:94
+#: whatsapp/utils.py:106
 msgid ""
 "🛒 Dilli — save together on groceries.\n"
 "Send prices you see in the supermarket and help everyone find cheaper "
@@ -532,10 +562,10 @@ msgstr ""
 "\n"
 "כתבו \"עזרה\" בכל רגע כדי לראות זאת שוב."
 
-#: whatsapp/utils.py:112
+#: whatsapp/utils.py:124
 msgid "Add a deal"
 msgstr "הוסף דיל"
 
-#: whatsapp/utils.py:113
+#: whatsapp/utils.py:125
 msgid "Find a deal"
 msgstr "מצא דיל"

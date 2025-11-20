@@ -55,9 +55,9 @@ def detect_locale(text: str) -> str:
                     if best.lang.startswith("en"):
                         return "en"
         except LangDetectException:
-            logger.debug("langdetect failed to classify sample", exc_info=True)
+            logger.debug("langdetect_failed", exc_info=True)
         except Exception:
-            logger.exception("Unexpected error running langdetect")
+            logger.exception("langdetect_unexpected_error")
 
     return "en"
 
@@ -130,7 +130,7 @@ def _build_request(payload: dict) -> request.Request | None:
     token = getattr(settings, "WHATSAPP_ACCESS_TOKEN", "")
     phone_id = getattr(settings, "WHATSAPP_PHONE_NUMBER_ID", "")
     if not token or not phone_id:
-        logger.warning("WhatsApp credentials not configured; skipping send")
+        logger.warning("whatsapp_credentials_missing")
         return None
 
     url = f"https://graph.facebook.com/v20.0/{phone_id}/messages"
@@ -154,9 +154,13 @@ def _execute_request(req: request.Request | None) -> bool:
         with request.urlopen(req, timeout=10) as resp:
             return 200 <= resp.status < 300
     except error.HTTPError as e:
-        logger.error("WhatsApp send failed: %s %s", e.code, getattr(e, "reason", ""))
+        logger.error(
+            "whatsapp_send_failed_http",
+            status=e.code,
+            reason=getattr(e, "reason", ""),
+        )
     except Exception:
-        logger.exception("WhatsApp send failed unexpectedly")
+        logger.exception("whatsapp_send_failed_unexpected")
     return False
 
 
