@@ -9,7 +9,7 @@ import structlog
 
 from pricing.models import PriceReport
 from stores.models import Store
-from .deal_flow import BRAND_SKIP_KEYWORDS
+from .text_normalization import is_keyword_norm, normalize_for_match
 from .models import DealLookupSession, WAUser
 
 
@@ -25,11 +25,14 @@ def start_find_deal_flow(user: WAUser, locale: str) -> str:
     return _question(session.step, locale)
 
 
-def handle_find_deal_text(user: WAUser, locale: str, message_text: Optional[str]) -> Optional[str]:
+def handle_find_deal_text(
+    user: WAUser, locale: str, message_text: Optional[str], message_text_norm: Optional[str] = None
+) -> Optional[str]:
     session = _get_active_session(user)
     if not session or session.step == DealLookupSession.Steps.COMPLETE:
         return None
     text = (message_text or "").strip()
+    text_norm = message_text_norm if message_text_norm is not None else normalize_for_match(text)
     if not text:
         return None
 
@@ -46,8 +49,7 @@ def handle_find_deal_text(user: WAUser, locale: str, message_text: Optional[str]
             )
             return _question(session.step, locale)
         if session.step == DealLookupSession.Steps.BRAND:
-            normalized = text.lower()
-            brand_value = None if normalized in BRAND_SKIP_KEYWORDS else text
+            brand_value = None if is_keyword_norm(text_norm, "skip", locale) else text
             session.data = {**(session.data or {}), "brand_query": brand_value}
             session.step = DealLookupSession.Steps.LOCATION
             session.save(update_fields=["data", "step", "updated_at"])

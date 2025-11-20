@@ -90,12 +90,22 @@ FIND_COMMANDS = {"find deal", "find a deal", "מצא דיל", "חפש דיל"}
 
 
 def is_add_command(text: str | None) -> bool:
-    t = (text or "").strip().lower()
+    """Check if text (already normalized upstream) is an add command.
+
+    Upstream webhook normalizes input using `normalize_for_match`. Here we only
+    trim whitespace to avoid duplicate normalization.
+    """
+    t = (text or "").strip()
     return t in ADD_COMMANDS
 
 
 def is_find_command(text: str | None) -> bool:
-    t = (text or "").strip().lower()
+    """Check if text (already normalized upstream) is a find command.
+
+    Upstream webhook normalizes input using `normalize_for_match`. Here we only
+    trim whitespace to avoid duplicate normalization.
+    """
+    t = (text or "").strip()
     return t in FIND_COMMANDS
 
 

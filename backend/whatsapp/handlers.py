@@ -30,6 +30,7 @@ from .utils import (
 )
 from .unit_translations import get_unit_label_for_locale
 from .models import WAUser
+from .text_normalization import normalize_for_match
 
 
 logger = structlog.get_logger(__name__)
@@ -49,6 +50,7 @@ class UserMessageContext:
     wa_norm: str
     wa_hash: str
     body_text: str
+    body_text_norm: str
     message_type: str | None
     button_reply_id: str | None
     lang_choice: str | None
@@ -150,11 +152,15 @@ def _build_user_context(
 
     structlog_contextvars.bind_contextvars(user_id=str(obj.pk))
 
+    # Normalize once at entry; downstream logic should use this normalized form
+    body_text_norm = normalize_for_match(body_text)
+
     return UserMessageContext(
         user=obj,
         wa_norm=wa_norm,
         wa_hash=wa_hash,
         body_text=body_text,
+        body_text_norm=body_text_norm,
         message_type=message_type,
         button_reply_id=button_reply_id,
         lang_choice=lang_choice,
@@ -164,13 +170,13 @@ def _build_user_context(
 
 
 def _state_start_add(ctx: "UserMessageContext", _msg: dict) -> Optional[StatePayload]:
-    if ctx.button_reply_id == "add_deal" or is_add_command(ctx.body_text):
+    if ctx.button_reply_id == "add_deal" or is_add_command(ctx.body_text_norm):
         return start_add_deal_flow(ctx.user, ctx.current_locale)
     return None
 
 
 def _state_start_find(ctx: "UserMessageContext", _msg: dict) -> Optional[StatePayload]:
-    if ctx.button_reply_id == "find_deal" or is_find_command(ctx.body_text):
+    if ctx.button_reply_id == "find_deal" or is_find_command(ctx.body_text_norm):
         return start_find_deal_flow(ctx.user, ctx.current_locale)
     return None
 
@@ -178,7 +184,9 @@ def _state_start_find(ctx: "UserMessageContext", _msg: dict) -> Optional[StatePa
 def _state_deal_flow_cont(
     ctx: "UserMessageContext", _msg: dict
 ) -> Optional[StatePayload]:
-    return handle_deal_flow_response(ctx.user, ctx.current_locale, ctx.body_text)
+    return handle_deal_flow_response(
+        ctx.user, ctx.current_locale, ctx.body_text, ctx.body_text_norm
+    )
 
 
 def _state_lang_chosen(ctx: "UserMessageContext", _msg: dict) -> Optional[StatePayload]:
@@ -200,7 +208,7 @@ def _state_new_user(ctx: "UserMessageContext", _msg: dict) -> Optional[StatePayl
 
 
 def _state_find_text(ctx: "UserMessageContext", _msg: dict) -> Optional[StatePayload]:
-    return handle_find_deal_text(ctx.user, ctx.current_locale, ctx.body_text)
+    return handle_find_deal_text(ctx.user, ctx.current_locale, ctx.body_text, ctx.body_text_norm)
 
 
 def _state_find_location(

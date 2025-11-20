@@ -13,9 +13,15 @@ from stores.models import Store, City, normalize_store_text
 from pricing.models import PriceReport
 
 from .models import DealReportSession, WAUser
-from .unit_translations import resolve_unit_translation, select_unit_for_locale, get_unit_by_slug
+from .unit_translations import (
+    resolve_unit_translation,
+    select_unit_for_locale,
+    get_unit_by_slug,
+)
+from .text_normalization import is_keyword_norm, normalize_for_match
 
 QUESTION_SEQUENCE = [
+    # Expected order by tests: ask for store, then branch, then city
     DealReportSession.Steps.STORE,
     DealReportSession.Steps.BRANCH,
     DealReportSession.Steps.CITY,
@@ -33,48 +39,8 @@ QUESTION_SEQUENCE = [
 
 logger = structlog.get_logger(__name__)
 
-CANCEL_KEYWORDS = {"cancel", "stop", "בטל", "ביטול", "סיים", "סיום"}
-YES_KEYWORDS = {"yes", "y", "yeah", "כן", "yep", "si"}
-NO_KEYWORDS = {"no", "n", "not", "לא", "nope", "אין"}
-BRAND_SKIP_KEYWORDS = {
-    "skip",
-    "n/a",
-    "na",
-    "none",
-    "unknown",
-    "dont know",
-    "don't know",
-    "no brand",
-    "generic",
-    "דלג",
-    "דלגו",
-    "אין מותג",
-    "בלי מותג",
-    "לא יודע",
-    "לא ידוע",
-}
-BRANCH_SKIP_KEYWORDS = {
-    "skip",
-    "n/a",
-    "na",
-    "none",
-    "unknown",
-    "dont know",
-    "don't know",
-    "no branch",
-    "generic",
-    "דלג",
-    "דלגו",
-    "אין",
-    "אין סניף",
-    "בלי סניף",
-    "לא יודע",
-    "לא ידוע",
-}
 MAX_STORE_CHOICES = 5
 HEBREW_DOUBLE_FORMS = (("וו", "ו"), ("יי", "י"))
-CITY_CHANGE_KEYWORDS_EN = {"change city", "change", "other city"}
-CITY_CHANGE_KEYWORDS_HE = {"שנה עיר", "שנו עיר", "עיר אחרת", "שינוי עיר"}
 
 
 @dataclass
@@ -84,14 +50,11 @@ class FlowMessage:
 
 
 def _contains_hebrew(value: str) -> bool:
-    return any("\u0590" <= ch <= "\u05FF" for ch in value or "")
+    return any("\u0590" <= ch <= "\u05ff" for ch in value or "")
 
 
 def _contains_latin(value: str) -> bool:
-    return any(
-        ("a" <= ch <= "z") or ("A" <= ch <= "Z")
-        for ch in value or ""
-    )
+    return any(("a" <= ch <= "z") or ("A" <= ch <= "Z") for ch in value or "")
 
 
 def _city_query_values(data: dict) -> list[str]:
@@ -131,7 +94,12 @@ def start_add_deal_flow(user: WAUser, locale: str) -> FlowMessage:
     return _question_prompt(session, locale)
 
 
-def handle_deal_flow_response(user: WAUser, locale: str, message_text: Optional[str]) -> Optional[str]:
+def handle_deal_flow_response(
+    user: WAUser,
+    locale: str,
+    message_text: Optional[str],
+    message_text_norm: Optional[str] = None,
+) -> None | str | FlowMessage:
     session = (
         DealReportSession.objects.filter(user=user, is_active=True)
         .order_by("-updated_at")
@@ -141,16 +109,19 @@ def handle_deal_flow_response(user: WAUser, locale: str, message_text: Optional[
         return None
 
     text = (message_text or "").strip()
+    # Use pre-normalized text from webhook if provided; otherwise normalize here
+    text_norm = message_text_norm if message_text_norm is not None else normalize_for_match(text)
     with translation.override(locale):
         if not text:
             return _("Please send a reply so I can continue.")
 
-        lower = text.lower()
-        if lower in CANCEL_KEYWORDS:
+        if is_keyword_norm(text_norm, "cancel", locale):
             session.is_active = False
             session.step = DealReportSession.Steps.CANCELED
             session.save(update_fields=["is_active", "step", "updated_at"])
-            return _("Okay, I canceled that deal. Tap “Add a deal” anytime to start again.")
+            return _(
+                "Okay, I canceled that deal. Tap “Add a deal” anytime to start again."
+            )
 
         handler = _STEP_HANDLERS.get(session.step)
         if not handler:
@@ -159,7 +130,7 @@ def handle_deal_flow_response(user: WAUser, locale: str, message_text: Optional[
             session.save(update_fields=["is_active", "step", "updated_at"])
             return _("Thanks! You can start a new deal anytime.")
 
-        next_prompt = handler(session, text)
+        next_prompt = handler(session, text, text_norm)
         if isinstance(next_prompt, str):
             return next_prompt
         if isinstance(next_prompt, FlowMessage):
@@ -233,7 +204,9 @@ def _city_prompt(session: DealReportSession, locale: str) -> FlowMessage:
             return FlowMessage(_("Which city is the store in?"))
         change_label = _("Change city")
         _update_data(session, city_change_label=change_label)
-        prompt = _("Use your saved city (%(city)s) or choose another city.") % {"city": default_city}
+        prompt = _("Use your saved city (%(city)s) or choose another city.") % {
+            "city": default_city
+        }
         buttons = [
             {"id": "city_default", "title": default_city[:20]},
             {"id": "city_change", "title": change_label[:20]},
@@ -255,13 +228,13 @@ def _question_prompt(session: DealReportSession, locale: str) -> FlowMessage:
                 "Which store or chain is this deal from?\nExample: “Shufersal” or “Rami Levy”."
             ),
             DealReportSession.Steps.BRANCH: _(
-                "Which branch or neighborhood is it? Example: “Givat Tal” or “Dizengoff 50”. Type \"skip\" if you’re not sure."
+                'Which branch or neighborhood is it? Example: “Givat Tal” or “Dizengoff 50”. Type "skip" if you’re not sure.'
             ),
             DealReportSession.Steps.PRODUCT: _(
                 "What product is this? (We’ll ask about size in the next questions.)"
             ),
             DealReportSession.Steps.BRAND: _(
-                "Which brand makes this product? Reply with the brand name or type \"skip\" if you're not sure."
+                'Which brand makes this product? Reply with the brand name or type "skip" if you\'re not sure.'
             ),
             DealReportSession.Steps.UNIT_TYPE: _(
                 "What unit is the package? (e.g., liter, kilogram, pack)."
@@ -299,13 +272,18 @@ def _format_store_choice_prompt(data: dict) -> str:
     store_name = data.get("store_name") or _("this store")
     city_values = _city_query_values(data)
     city_obj = _city_from_session(data)
-    city_label = city_obj.display_name if city_obj else (city_values[0] if city_values else "")
+    city_label = (
+        city_obj.display_name if city_obj else (city_values[0] if city_values else "")
+    )
     if not choices:
-        return _("Please tell me which branch %(store)s is so I can match the right location.") % {
+        return _(
+            "Please tell me which branch %(store)s is so I can match the right location."
+        ) % {
             "store": store_name,
         }
     lines = [
-        _("I found a few stores named %(store)s in %(city)s:") % {
+        _("I found a few stores named %(store)s in %(city)s:")
+        % {
             "store": store_name,
             "city": city_label or _("this city"),
         }
@@ -314,11 +292,16 @@ def _format_store_choice_prompt(data: dict) -> str:
         label = choice.get("label") or choice.get("name") or store_name
         detail = choice.get("address") or choice.get("city") or ""
         if detail:
-            lines.append(_("%(index)s) %(label)s — %(detail)s") % {"index": idx, "label": label, "detail": detail})
+            lines.append(
+                _("%(index)s) %(label)s — %(detail)s")
+                % {"index": idx, "label": label, "detail": detail}
+            )
         else:
             lines.append(_("%(index)s) %(label)s") % {"index": idx, "label": label})
     lines.append(
-        _("Reply with the matching number, or type the branch/address if it's not in this list.")
+        _(
+            "Reply with the matching number, or type the branch/address if it's not in this list."
+        )
     )
     return "\n".join(lines)
 
@@ -342,31 +325,39 @@ def _update_data(session: DealReportSession, **updates) -> None:
     session.data = data
 
 
-def _handle_store(session: DealReportSession, text: str) -> None:
-    _update_data(session, store_name=text, store_id=None, store_detail=None, store_choices=[])
+def _handle_store(session: DealReportSession, text: str, _text_norm: str) -> None:
+    _update_data(
+        session, store_name=text, store_id=None, store_detail=None, store_choices=[]
+    )
     _advance(session)
 
 
-def _handle_branch(session: DealReportSession, text: str) -> None:
+def _handle_branch(
+    session: DealReportSession, text: str, text_norm: str
+) -> None:
     cleaned = text.strip()
-    lower = cleaned.lower()
-    if not cleaned or lower in BRANCH_SKIP_KEYWORDS:
+    # Use the active translation language for keyword matching
+    locale = translation.get_language() or getattr(session.user, "locale", "he")
+    if not cleaned or is_keyword_norm(text_norm, "skip", locale):
         _update_data(session, store_detail="")
     else:
         _update_data(session, store_detail=cleaned)
     _advance(session)
 
 
-def _handle_city(session: DealReportSession, text: str) -> str | None:
+def _handle_city(
+    session: DealReportSession, text: str, text_norm: str
+) -> str | None:
     cleaned = text.strip()
     if not cleaned:
         return _("Please tell me which city this store is in.")
     data = session.data or {}
-    change_label = (data.get("city_change_label") or "").strip().lower()
-    lower = cleaned.lower()
-    if change_label and lower == change_label:
+    change_label = (data.get("city_change_label") or "").strip()
+    # Compare normalized label if present
+    if change_label and normalize_for_match(change_label) == text_norm:
         return _("Okay, type the city name for this deal.")
-    if lower in CITY_CHANGE_KEYWORDS_EN or lower in CITY_CHANGE_KEYWORDS_HE:
+    locale = translation.get_language() or getattr(session.user, "locale", "he")
+    if is_keyword_norm(text_norm, "city_change", locale):
         return _("Okay, type the city name for this deal.")
     updates = {"city": cleaned, "city_change_label": None}
     if _contains_hebrew(cleaned):
@@ -386,7 +377,9 @@ def _ensure_city_reference(session: DealReportSession) -> Optional[City]:
     data = session.data or {}
     city = _city_from_session(data)
     if city:
-        _update_data(session, city_he=city.name_he, city_en=city.name_en, city=city.display_name)
+        _update_data(
+            session, city_he=city.name_he, city_en=city.name_en, city=city.display_name
+        )
         _assign_user_city(session, city)
         return city
 
@@ -449,7 +442,9 @@ def _maybe_request_store_choice(session: DealReportSession) -> bool:
     return True
 
 
-def _handle_store_confirm(session: DealReportSession, text: str) -> Optional[str]:
+def _handle_store_confirm(
+    session: DealReportSession, text: str, _text_norm: str
+) -> Optional[str]:
     data = session.data or {}
     choices: Sequence[dict] = data.get("store_choices") or []
     cleaned = text.strip()
@@ -460,9 +455,9 @@ def _handle_store_confirm(session: DealReportSession, text: str) -> Optional[str
             _update_data(session, store_id=selection.get("id"), store_choices=[])
             _advance(session, DealReportSession.Steps.PRODUCT)
             return None
-        return _("Please reply with a number between 1 and %(count)s, or type the branch name.") % {
-            "count": len(choices)
-        }
+        return _(
+            "Please reply with a number between 1 and %(count)s, or type the branch name."
+        ) % {"count": len(choices)}
 
     if cleaned:
         _update_data(session, store_detail=cleaned, store_choices=[])
@@ -471,25 +466,27 @@ def _handle_store_confirm(session: DealReportSession, text: str) -> Optional[str
         _advance(session, DealReportSession.Steps.PRODUCT)
         return None
 
-    return _("Please reply with the number from the list or describe the branch/address.")
+    return _(
+        "Please reply with the number from the list or describe the branch/address."
+    )
 
 
-def _handle_product(session: DealReportSession, text: str) -> None:
+def _handle_product(session: DealReportSession, text: str, _text_norm: str) -> None:
     _update_data(session, product_name=text, product_brand="")
     _advance(session)
 
 
-def _handle_brand(session: DealReportSession, text: str) -> None:
+def _handle_brand(session: DealReportSession, text: str, text_norm: str) -> None:
     cleaned = text.strip()
-    lower = cleaned.lower()
-    if not cleaned or lower in BRAND_SKIP_KEYWORDS or lower in NO_KEYWORDS:
+    locale = translation.get_language() or getattr(session.user, "locale", "he")
+    if not cleaned or is_keyword_norm(text_norm, "skip", locale) or is_keyword_norm(text_norm, "no", locale):
         _update_data(session, product_brand="")
     else:
         _update_data(session, product_brand=cleaned)
     _advance(session)
 
 
-def _handle_price(session: DealReportSession, text: str) -> str | None:
+def _handle_price(session: DealReportSession, text: str, _text_norm: str) -> str | None:
     cleaned = text.replace(",", ".")
     try:
         value = Decimal(cleaned)
@@ -502,7 +499,7 @@ def _handle_price(session: DealReportSession, text: str) -> str | None:
     return None
 
 
-def _handle_units(session: DealReportSession, text: str) -> str | None:
+def _handle_units(session: DealReportSession, text: str, _text_norm: str) -> str | None:
     cleaned = text.strip()
     if not cleaned:
         units = 1
@@ -517,7 +514,7 @@ def _handle_units(session: DealReportSession, text: str) -> str | None:
     return None
 
 
-def _handle_unit_type(session: DealReportSession, text: str) -> str | None:
+def _handle_unit_type(session: DealReportSession, text: str, _text_norm: str) -> str | None:
     cleaned = text.strip()
     if not cleaned:
         return _("Please specify the unit type (e.g., liter, kilogram, pack).")
@@ -533,7 +530,7 @@ def _handle_unit_type(session: DealReportSession, text: str) -> str | None:
     return None
 
 
-def _handle_unit_quantity(session: DealReportSession, text: str) -> str | None:
+def _handle_unit_quantity(session: DealReportSession, text: str, _text_norm: str) -> str | None:
     cleaned = text.replace(",", ".").strip()
     try:
         quantity = Decimal(cleaned)
@@ -546,11 +543,11 @@ def _handle_unit_quantity(session: DealReportSession, text: str) -> str | None:
     return None
 
 
-def _handle_club(session: DealReportSession, text: str) -> str | None:
-    lower = text.lower()
-    if lower in YES_KEYWORDS:
+def _handle_club(session: DealReportSession, _text: str, text_norm: str) -> str | None:
+    locale = translation.get_language() or getattr(session.user, "locale", "he")
+    if is_keyword_norm(text_norm, "yes", locale):
         _update_data(session, club_only=True)
-    elif lower in NO_KEYWORDS:
+    elif is_keyword_norm(text_norm, "no", locale):
         _update_data(session, club_only=False)
     else:
         return _("Please reply “yes” or “no”.")
@@ -558,9 +555,9 @@ def _handle_club(session: DealReportSession, text: str) -> str | None:
     return None
 
 
-def _handle_limit(session: DealReportSession, text: str) -> str | None:
-    lower = text.lower()
-    if lower in NO_KEYWORDS or not text.strip():
+def _handle_limit(session: DealReportSession, text: str, text_norm: str) -> str | None:
+    locale = translation.get_language() or getattr(session.user, "locale", "he")
+    if is_keyword_norm(text_norm, "no", locale) or not text.strip():
         _update_data(session, limit_qty=None)
     else:
         if not text.strip().isdigit():
@@ -573,9 +570,9 @@ def _handle_limit(session: DealReportSession, text: str) -> str | None:
     return None
 
 
-def _handle_cart(session: DealReportSession, text: str) -> str | None:
-    lower = text.lower()
-    if lower in NO_KEYWORDS or not text.strip():
+def _handle_cart(session: DealReportSession, text: str, text_norm: str) -> str | None:
+    locale = translation.get_language() or getattr(session.user, "locale", "he")
+    if is_keyword_norm(text_norm, "no", locale) or not text.strip():
         _update_data(session, min_cart_total=None)
     else:
         cleaned = text.replace(",", ".")
@@ -595,6 +592,8 @@ def _handle_default_city_confirm(session: DealReportSession, text: str) -> str |
     data = session.data or {}
     locale = session.user.locale or "he"
     city_value = _format_city_value(data, locale)
+
+
 def _format_summary(data: dict, locale: str) -> str:
     with translation.override(locale):
         city_value = _format_city_value(data, locale)
@@ -612,11 +611,17 @@ def _format_summary(data: dict, locale: str) -> str:
         price = data.get("price")
         if price:
             units = data.get("units_in_price") or 1
-            lines.append(_("Price: %(price)s (%(units)s unit(s))") % {"price": price, "units": units})
+            lines.append(
+                _("Price: %(price)s (%(units)s unit(s))")
+                % {"price": price, "units": units}
+            )
         unit_label = select_unit_for_locale(data, locale)
         unit_qty = data.get("unit_quantity")
         if unit_label and unit_qty:
-            lines.append(_("Package size: %(qty)s %(unit)s") % {"qty": unit_qty, "unit": unit_label})
+            lines.append(
+                _("Package size: %(qty)s %(unit)s")
+                % {"qty": unit_qty, "unit": unit_label}
+            )
         club = data.get("club_only")
         if club is True:
             lines.append(_("Club members only: yes"))
@@ -676,7 +681,9 @@ _STEP_HANDLERS = {
 }
 
 
-def _persist_price_report(session: DealReportSession, user: WAUser) -> Optional[PriceReport]:
+def _persist_price_report(
+    session: DealReportSession, user: WAUser
+) -> Optional[PriceReport]:
     data = session.data or {}
     if data.get("price_report_id"):
         return PriceReport.objects.filter(pk=data["price_report_id"]).first()
@@ -706,16 +713,24 @@ def _persist_price_report(session: DealReportSession, user: WAUser) -> Optional[
 
     unit_type = data.get("unit_type")
     unit_quantity = data.get("unit_quantity")
-    unit_type_he = data.get("unit_type_he") or (unit_type if unit_type and _contains_hebrew(unit_type) else "")
-    unit_type_en = data.get("unit_type_en") or (unit_type if unit_type and not _contains_hebrew(unit_type) else "")
+    unit_type_he = data.get("unit_type_he") or (
+        unit_type if unit_type and _contains_hebrew(unit_type) else ""
+    )
+    unit_type_en = data.get("unit_type_en") or (
+        unit_type if unit_type and not _contains_hebrew(unit_type) else ""
+    )
     if product:
-        unit_type = unit_type or product.default_unit_type_en or product.default_unit_type
+        unit_type = (
+            unit_type or product.default_unit_type_en or product.default_unit_type
+        )
         if not unit_type_he:
             unit_type_he = product.default_unit_type_he or unit_type_he
         if not unit_type_en:
             unit_type_en = product.default_unit_type_en or unit_type_en or unit_type
         unit_quantity = unit_quantity or (
-            str(product.default_unit_quantity) if product.default_unit_quantity else None
+            str(product.default_unit_quantity)
+            if product.default_unit_quantity
+            else None
         )
 
     price_report = PriceReport.objects.create(
@@ -777,7 +792,12 @@ def _get_or_create_store(data: dict) -> Store:
     city_en = _normalize_text(data.get("city_en"))
     city = _normalize_text(data.get("city")) or city_en or city_he
     detail = _normalize_text(data.get("store_detail"))
-    city_obj = _city_from_session(data) or _match_city(city) or _match_city(city_he) or _match_city(city_en)
+    city_obj = (
+        _city_from_session(data)
+        or _match_city(city)
+        or _match_city(city_he)
+        or _match_city(city_en)
+    )
     city_id = str(city_obj.id) if city_obj else None
     store = _match_store(name, city_he, city_en, detail, city_id)
     if store:
@@ -809,7 +829,9 @@ def _match_store(
     city_id: Optional[str] = None,
 ) -> Store | None:
     qs = Store.objects.all()
-    city_values = [value for value in (_normalize_text(city_he), _normalize_text(city_en)) if value]
+    city_values = [
+        value for value in (_normalize_text(city_he), _normalize_text(city_en)) if value
+    ]
     city_filter = _build_city_filter(city_values) if city_values else None
     if city_id:
         qs = qs.filter(city_obj_id=city_id)
@@ -836,7 +858,9 @@ def _match_store(
     if chunks:
         partial_filter = Q()
         for chunk in chunks:
-            partial_filter |= Q(name__icontains=chunk) | Q(display_name__icontains=chunk)
+            partial_filter |= Q(name__icontains=chunk) | Q(
+                display_name__icontains=chunk
+            )
         qs_partial = Store.objects.filter(partial_filter)
         if city_filter:
             qs_partial = qs_partial.filter(city_filter)
@@ -882,7 +906,9 @@ def _find_store_candidates(name: str, data: dict) -> list[Store]:
     if chunks:
         partial_filter = Q()
         for chunk in chunks:
-            partial_filter |= Q(name__icontains=chunk) | Q(display_name__icontains=chunk)
+            partial_filter |= Q(name__icontains=chunk) | Q(
+                display_name__icontains=chunk
+            )
         partial_qs = base_qs.filter(partial_filter)
         for store in partial_qs:
             if store.id in added_ids:
@@ -913,7 +939,9 @@ def _match_city(name: Optional[str]) -> Optional[City]:
     value = _normalize_text(name)
     if not value:
         return None
-    return City.objects.filter(Q(name_he__iexact=value) | Q(name_en__iexact=value)).first()
+    return City.objects.filter(
+        Q(name_he__iexact=value) | Q(name_en__iexact=value)
+    ).first()
 
 
 def _get_or_create_product(data: dict) -> Product:
@@ -935,10 +963,14 @@ def _get_or_create_product(data: dict) -> Product:
 
 def _match_product(name: str, brand: Optional[str] = None) -> Product | None:
     if brand:
-        product = Product.objects.filter(name_he__iexact=name, brand__iexact=brand).first()
+        product = Product.objects.filter(
+            name_he__iexact=name, brand__iexact=brand
+        ).first()
         if product:
             return product
-        product = Product.objects.filter(name_en__iexact=name, brand__iexact=brand).first()
+        product = Product.objects.filter(
+            name_en__iexact=name, brand__iexact=brand
+        ).first()
         if product:
             return product
 
